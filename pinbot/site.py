@@ -52,4 +52,15 @@ def build(out=SITE_DIR):
         (out / "p" / f'{p["slug"]}.html').write_text(
             page(p["title"], body, name, p["description"]).replace("{ROOT}", "../")
         )
+    site_url = get("SITE_URL").rstrip("/")
+    items = "".join(
+        f'<item><title>{e(p["title"])}</title><link>{e(site_url)}/p/{e(p["slug"])}.html</link>'
+        f'<guid>{e(site_url)}/p/{e(p["slug"])}.html</guid><description>{e(p["description"])}</description>'
+        f'<enclosure url="{e(p["image_url"])}" type="image/jpeg" length="0"/></item>'
+        for p in products
+    )
+    (out / "feed.xml").write_text(
+        f'<?xml version="1.0"?><rss version="2.0"><channel><title>{e(name)}</title>'
+        f'<link>{e(site_url)}</link><description>Curated picks</description>{items}</channel></rss>'
+    )
     return len(products)
