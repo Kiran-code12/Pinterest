@@ -3,6 +3,7 @@ import html
 import shutil
 from .config import SITE_DIR, get
 from .products import load_products
+from .images import make_pin
 
 CSS = """body{font-family:system-ui,sans-serif;margin:0;color:#222;background:#fafafa}
 header,main,footer{max-width:960px;margin:auto;padding:16px}
@@ -25,6 +26,16 @@ def page(title, body, name, desc=""):
 <main>{body}</main><footer class="note">{e(DISCLOSURE)}</footer></body></html>"""
 
 
+def abs_img(p, site_url):
+    u = p["image_url"]
+    return u if u.startswith("http") else f"{site_url}/{u}"
+
+
+def rel(p, prefix):
+    u = p["image_url"]
+    return html.escape(u if u.startswith("http") else prefix + u)
+
+
 def build(out=SITE_DIR):
     name = get("SITE_NAME", "My Picks")
     products = load_products()
@@ -32,11 +43,15 @@ def build(out=SITE_DIR):
         shutil.rmtree(out)
     (out / "p").mkdir(parents=True)
     (out / "style.css").write_text(CSS)
+    for i, p in enumerate(products):
+        if p["image_url"].endswith(f"/pins/{p['slug']}.png"):
+            make_pin(p, out / "pins" / f"{p['slug']}.png", i)
+            p["image_url"] = f"pins/{p['slug']}.png"  # relative for the site pages
     e = html.escape
 
     cards = "".join(
-        f'<div class="card"><a href="p/{e(p["slug"])}.html"><img src="{e(p["image_url"])}" alt="{e(p["title"])}" loading="lazy">'
-        f'<h3>{e(p["title"])}</h3></a><p class="note">{e(p.get("price", ""))}</p></div>'
+        f'<div class="card"><a href="p/{e(p["slug"])}.html"><img src="{rel(p, "")}" alt="{e(p["title"])}" loading="lazy">'
+        f'<h3>{e(p["title"])}</h3></a><p class="note"></p></div>'
         for p in products
     )
     (out / "index.html").write_text(
@@ -44,8 +59,8 @@ def build(out=SITE_DIR):
     )
     for p in products:
         body = (
-            f'<img src="{e(p["image_url"])}" alt="{e(p["title"])}" style="max-width:100%;border-radius:12px">'
-            f'<h2>{e(p["title"])}</h2><p>{e(p["description"])}</p><p><b>{e(p.get("price", ""))}</b></p>'
+            f'<img src="{rel(p, "../")}" alt="{e(p["title"])}" style="max-width:100%;border-radius:12px">'
+            f'<h2>{e(p["title"])}</h2><p>{e(p["description"])}</p>'
             f'<p><a class="btn" rel="sponsored nofollow noopener" target="_blank" href="{e(p["affiliate_url"])}">View product</a></p>'
             f'<p class="note">{e(DISCLOSURE)}</p>'
         )
@@ -56,7 +71,7 @@ def build(out=SITE_DIR):
     items = "".join(
         f'<item><title>{e(p["title"])}</title><link>{e(site_url)}/p/{e(p["slug"])}.html</link>'
         f'<guid>{e(site_url)}/p/{e(p["slug"])}.html</guid><description>{e(p["description"])}</description>'
-        f'<enclosure url="{e(p["image_url"])}" type="image/jpeg" length="0"/></item>'
+        f'<enclosure url="{e(abs_img(p, site_url))}" type="image/jpeg" length="0"/></item>'
         for p in products
     )
     (out / "feed.xml").write_text(

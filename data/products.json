@@ -1,22 +1,32 @@
 [
   {
-    "slug": "bamboo-desk-organizer",
-    "title": "Bamboo Desk Organizer",
-    "description": "A tidy multi-compartment organizer that keeps your workspace calm and clutter-free.",
-    "category": "Home Office",
-    "image_url": "https://example.com/images/bamboo-desk-organizer.jpg",
-    "affiliate_url": "https://example.com/aff/bamboo-desk-organizer",
-    "price": "$24.99",
-    "tags": ["desk", "organization", "workspace"]
+    "slug": "vitamin-c-serum-glow",
+    "title": "Vitamin C Serum for a Natural Glow",
+    "hook": "Glass-skin glow in 4 weeks?",
+    "description": "A brightening vitamin C serum to fade dullness and even out your skin tone. Add it to your morning skincare routine before sunscreen.",
+    "category": "Skincare",
+    "network": "amazon",
+    "affiliate_url": "https://www.amazon.in/dp/REPLACE_ASIN",
+    "tags": ["skincare", "vitaminc", "glowingskin", "skincareroutine"]
   },
   {
-    "slug": "ceramic-pour-over-set",
-    "title": "Ceramic Pour-Over Coffee Set",
-    "description": "Slow-morning coffee ritual in one beautiful set: dripper, carafe and two cups.",
-    "category": "Kitchen",
-    "image_url": "https://example.com/images/ceramic-pour-over-set.jpg",
-    "affiliate_url": "https://example.com/aff/ceramic-pour-over-set",
-    "price": "$39.00",
-    "tags": ["coffee", "kitchen", "gift"]
+    "slug": "spf-50-sunscreen-no-white-cast",
+    "title": "Best SPF 50 Sunscreen With No White Cast",
+    "hook": "Sunscreen that won't leave a white cast",
+    "description": "Lightweight daily sunscreen for Indian skin tones. The one step you should never skip in your skincare routine.",
+    "category": "Skincare",
+    "network": "earnkaro",
+    "affiliate_url": "https://ekaro.in/REPLACE",
+    "tags": ["sunscreen", "spf50", "skincare", "beautytips"]
+  },
+  {
+    "slug": "niacinamide-for-clear-skin",
+    "title": "Niacinamide Serum for Clear, Even Skin",
+    "hook": "Dark spots? Try this 10% serum",
+    "description": "Niacinamide helps with open pores, dark spots and oil control. Use it at night or in the morning under moisturizer.",
+    "category": "Skincare",
+    "network": "cuelinks",
+    "affiliate_url": "https://linksredirect.com/?cuid=REPLACE",
+    "tags": ["niacinamide", "darkspots", "clearskin", "skincaretips"]
   }
 ]

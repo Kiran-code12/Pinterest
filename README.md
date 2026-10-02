@@ -23,3 +23,10 @@ You can run everything free today:
 4. Optional hands-off alternative: claim your site in Pinterest, then **Settings -> Claim -> Auto-publish** with `SITE_URL/feed.xml`.
 
 When you later get Pinterest API access, add `PINTEREST_ACCESS_TOKEN` / `PINTEREST_BOARD_ID` as GitHub secrets and `SITE_URL` as a repo variable; `.github/workflows/daily.yml` then posts 3 pins every day.
+
+## Beauty/skincare setup (free)
+- **Pin images** are generated automatically (`pinbot/images.py`, 1000x1500, soft pink gradient + hook headline). Run `pip install -r requirements.txt`. Add `"image_url"` to a product to use your own image instead.
+- **Affiliate links**: put your Amazon, EarnKaro or Cuelinks link in `affiliate_url` (replace the `REPLACE` placeholders). Set `AMAZON_TAG` to auto-add your Associates tag to amazon links.
+- **Hosting**: push to `main`, then Settings -> Pages -> Source: **GitHub Actions** (repo must be public for free Pages). Set repo variables `SITE_URL` (e.g. `https://<user>.github.io/<repo>`), `SITE_NAME`, `AMAZON_TAG`.
+- Pin images need a live `SITE_URL`: deploy first, then upload the bulk CSV.
+- Avoid showing prices on the site (Amazon Associates rules), and keep the affiliate disclosure on every page (already included).

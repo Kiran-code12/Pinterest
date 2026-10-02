@@ -1,21 +1,35 @@
 name: daily-pins
 on:
   schedule: [{cron: "30 3 * * *"}]   # 09:00 IST
+  push: {branches: [main]}
   workflow_dispatch:
-permissions: {contents: write}
+permissions: {contents: write, pages: write, id-token: write}
+concurrency: {group: daily-pins, cancel-in-progress: false}
 jobs:
   run:
     runs-on: ubuntu-latest
+    environment: {name: github-pages, url: "${{ steps.deploy.outputs.page_url }}"}
     env:
       SITE_URL: ${{ vars.SITE_URL }}
+      SITE_NAME: ${{ vars.SITE_NAME }}
+      AMAZON_TAG: ${{ vars.AMAZON_TAG }}
       PINTEREST_ACCESS_TOKEN: ${{ secrets.PINTEREST_ACCESS_TOKEN }}
       PINTEREST_BOARD_ID: ${{ secrets.PINTEREST_BOARD_ID }}
     steps:
       - uses: actions/checkout@v4
-      - run: python3 -m pinbot build && python3 -m pinbot queue
-      # Only posts live once the API secrets exist; otherwise dry-run.
-      - run: |
-          if [ -n "$PINTEREST_ACCESS_TOKEN" ]; then python3 -m pinbot publish --limit 3 --live --delay 3600; else python3 -m pinbot publish --limit 3; fi
-      - run: |
-          git config user.name "pinbot"; git config user.email "pinbot@users.noreply.github.com"
-          git add -f docs data/queue.json; git commit -m "daily update" || true; git push
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.12"}
+      - run: pip install -r requirements.txt && python -m unittest discover tests
+      - run: python -m pinbot build && python -m pinbot queue
+      - uses: actions/upload-pages-artifact@v3
+        with: {path: docs}
+      - id: deploy
+        uses: actions/deploy-pages@v4
+      # Images are live now. Posts live only if API secrets exist (and only on the daily schedule).
+      - if: github.event_name != 'push'
+        run: |
+          if [ -n "$PINTEREST_ACCESS_TOKEN" ]; then python -m pinbot publish --limit 3 --live --delay 3600; else python -m pinbot publish --limit 3; fi
+      - if: github.event_name != 'push'
+        run: |
+          git config user.name pinbot; git config user.email pinbot@users.noreply.github.com
+          git add -f data/queue.json; git commit -m "update pin queue" || true; git push
