@@ -1,0 +1,22 @@
+[
+  {
+    "slug": "bamboo-desk-organizer",
+    "title": "Bamboo Desk Organizer",
+    "description": "A tidy multi-compartment organizer that keeps your workspace calm and clutter-free.",
+    "category": "Home Office",
+    "image_url": "https://example.com/images/bamboo-desk-organizer.jpg",
+    "affiliate_url": "https://example.com/aff/bamboo-desk-organizer",
+    "price": "$24.99",
+    "tags": ["desk", "organization", "workspace"]
+  },
+  {
+    "slug": "ceramic-pour-over-set",
+    "title": "Ceramic Pour-Over Coffee Set",
+    "description": "Slow-morning coffee ritual in one beautiful set: dripper, carafe and two cups.",
+    "category": "Kitchen",
+    "image_url": "https://example.com/images/ceramic-pour-over-set.jpg",
+    "affiliate_url": "https://example.com/aff/ceramic-pour-over-set",
+    "price": "$39.00",
+    "tags": ["coffee", "kitchen", "gift"]
+  }
+]
