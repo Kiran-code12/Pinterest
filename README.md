@@ -30,3 +30,18 @@ When you later get Pinterest API access, add `PINTEREST_ACCESS_TOKEN` / `PINTERE
 - **Hosting**: push to `main`, then Settings -> Pages -> Source: **GitHub Actions** (repo must be public for free Pages). Set repo variables `SITE_URL` (e.g. `https://<user>.github.io/<repo>`), `SITE_NAME`, `AMAZON_TAG`.
 - Pin images need a live `SITE_URL`: deploy first, then upload the bulk CSV.
 - Avoid showing prices on the site (Amazon Associates rules), and keep the affiliate disclosure on every page (already included).
+
+## Guides (content marketing)
+Write guides as markdown in `content/<slug>.md`:
+
+```
+---
+title: ...            (page title)
+hook: ...             (short headline on the pin image)
+description: ...      (meta description + pin text)
+tags: a, b, c         (become pin hashtags)
+products: slug1, slug2   (product slugs from products.json, shown as "Products mentioned")
+---
+Body with `## headings`, `- lists`, **bold**, [links](https://...).
+```
+Each guide gets a page under `/a/`, its own generated pin, and a place in the RSS feed. Queue order is guides first, then products. Add 1-2 new guides a week and the daily workflow keeps posting 3 pins/day.

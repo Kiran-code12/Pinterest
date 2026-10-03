@@ -16,6 +16,7 @@ def load_products(path=PRODUCTS_FILE):
             raise ValueError(f"duplicate slug {p['slug']}")
         seen.add(p["slug"])
         p.setdefault("hook", p["title"])
+        p["path"] = "p"
         # Pin image is generated unless a custom image_url is supplied.
         p["image_url"] = p.get("image_url") or f"{get('SITE_URL').rstrip('/')}/pins/{p['slug']}.png"
         p["affiliate_url"] = tag_amazon(p["affiliate_url"])

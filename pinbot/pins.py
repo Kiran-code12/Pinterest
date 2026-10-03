@@ -5,13 +5,14 @@ import urllib.error
 import urllib.request
 from urllib.parse import urlencode
 from .config import QUEUE_FILE, get
+from .articles import load_articles
 from .products import load_products
 
 API = "https://api.pinterest.com/v5/pins"
 
 
 def build_pin(p, site_url):
-    link = f"{site_url}/p/{p['slug']}.html?" + urlencode(
+    link = f"{site_url}/{p.get('path', 'p')}/{p['slug']}.html?" + urlencode(
         {"utm_source": "pinterest", "utm_medium": "social", "utm_campaign": p["slug"]}
     )
     tags = " ".join("#" + t.replace(" ", "") for t in p.get("tags", []))
@@ -37,7 +38,7 @@ def enqueue():
     site_url = get("SITE_URL").rstrip("/")
     q = load_queue()
     known = {i["slug"] for i in q}
-    new = [dict(build_pin(p, site_url), status="pending") for p in load_products() if p["slug"] not in known]
+    new = [dict(build_pin(p, site_url), status="pending") for p in load_articles() + load_products() if p["slug"] not in known]
     save_queue(q + new)
     return len(new)
 
