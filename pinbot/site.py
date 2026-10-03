@@ -13,7 +13,9 @@ header,main,footer{max-width:960px;margin:auto;padding:16px}
 .card img{width:100%;border-radius:8px}a{color:#e60023}
 article{max-width:680px}.btn{display:inline-block;background:#e60023;color:#fff;padding:10px 18px;border-radius:24px;text-decoration:none}
 .pick{background:#fff;border-radius:12px;padding:12px 16px;margin:12px 0;box-shadow:0 1px 4px #0002}
-.note{font-size:.8rem;color:#666}"""
+.note{font-size:.8rem;color:#666}
+header a{color:#4a2837;text-decoration:none}.hero{max-height:320px;width:auto;max-width:100%;border-radius:12px;display:block}
+.card h3{font-size:1rem;margin:.6em 0 .2em}.card a{text-decoration:none}"""
 
 DISCLOSURE = "As an affiliate, we may earn a commission from qualifying purchases at no extra cost to you."
 e = html.escape
@@ -87,16 +89,16 @@ def build(out=SITE_DIR):
     for a in articles:
         picks = "".join(pick(by_slug[s]) for s in a["products"])
         body = (
-            f'<article><img src="{rel(a, "../")}" alt="{e(a["title"])}" style="max-width:100%;border-radius:12px">'
+            f'<article><img src="{rel(a, "../")}" alt="{e(a["title"])}" class="hero">'
             f'<h1>{e(a["title"])}</h1>{md_to_html(a["body"])}'
             + (f"<h2>Products mentioned</h2>{picks}" if picks else "")
-            + f'<p class="note">{e(DISCLOSURE)} This is general information, not medical advice.</p></article>'
+            + '<p class="note">This is general information, not medical advice.</p></article>'
         )
         (out / "a" / f'{a["slug"]}.html').write_text(page(a["title"], body, name, "../", a["description"]))
 
     for p in products:
         body = (
-            f'<img src="{rel(p, "../")}" alt="{e(p["title"])}" style="max-width:100%;border-radius:12px">'
+            f'<img src="{rel(p, "../")}" alt="{e(p["title"])}" class="hero">'
             f'<h2>{e(p["title"])}</h2><p>{e(p["description"])}</p>'
             f'<p><a class="btn" rel="sponsored nofollow noopener" target="_blank" href="{e(p["affiliate_url"])}">View product</a></p>'
         )
