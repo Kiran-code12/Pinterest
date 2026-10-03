@@ -52,3 +52,8 @@ Put product photos in `data/images/` and reference them with `"photo": "name.jpg
 - A guide whose products have photos gets a collage pin (up to 3 products).
 - No photo = the gradient text pin.
 Only use photos you own or that your affiliate program explicitly lets you use (Amazon SiteStripe/Associates creatives, merchant creatives from EarnKaro/Cuelinks). Don't copy images off product pages.
+
+## Auto-download product photos
+Add `"image_source"` to a product: either a direct image link or the product page link (the page's `og:image` preview image is used).
+`python -m pinbot fetch-images` downloads them into `data/images/` and sets `photo` for you (`--force` re-downloads). Failures are listed and don't stop the others.
+Some shops block automated downloads; for those, save the image by hand and set `photo` yourself. You are responsible for having the right to use the images you download.
