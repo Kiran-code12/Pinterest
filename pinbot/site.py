@@ -2,7 +2,7 @@
 import html
 import shutil
 from .articles import load_articles, md_to_html
-from .config import SITE_DIR, get
+from .config import IMAGES_DIR, SITE_DIR, get
 from .images import make_pin
 from .products import load_products
 
@@ -59,7 +59,7 @@ def pick(p):
     )
 
 
-def build(out=SITE_DIR):
+def build(out=SITE_DIR, images_dir=IMAGES_DIR):
     name = get("SITE_NAME", "My Picks")
     products, articles = load_products(), load_articles()
     by_slug = {p["slug"]: p for p in products}
@@ -74,10 +74,23 @@ def build(out=SITE_DIR):
     (out / "style.css").write_text(CSS)
     site_url = get("SITE_URL").rstrip("/")
 
+    photo_of = {}
+    for p in products:
+        if p.get("photo"):
+            f = images_dir / p["photo"]
+            if not f.exists():
+                raise ValueError(f"product {p['slug']}: photo {f} not found")
+            photo_of[p["slug"]] = f
+
+    def photos_for(it):
+        if it["path"] == "p":
+            return [photo_of[it["slug"]]] if it["slug"] in photo_of else []
+        return [photo_of[s] for s in it["products"] if s in photo_of][:3]
+
     items = articles + products
     for i, it in enumerate(items):
         if it["image_url"].endswith(f"/pins/{it['slug']}.png"):
-            make_pin(it, out / "pins" / f"{it['slug']}.png", i)
+            make_pin(it, out / "pins" / f"{it['slug']}.png", i, photos_for(it))
             it["image_url"] = f"pins/{it['slug']}.png"  # relative for site pages; pins.py rebuilds the absolute URL
 
     home = (

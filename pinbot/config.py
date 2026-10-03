@@ -4,6 +4,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 PRODUCTS_FILE = ROOT / "data" / "products.json"
 CONTENT_DIR = ROOT / "content"
+IMAGES_DIR = ROOT / "data" / "images"
 QUEUE_FILE = ROOT / "data" / "queue.json"
 SITE_DIR = ROOT / "docs"  # GitHub Pages can serve /docs
 

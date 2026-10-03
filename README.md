@@ -45,3 +45,10 @@ products: slug1, slug2   (product slugs from products.json, shown as "Products m
 Body with `## headings`, `- lists`, **bold**, [links](https://...).
 ```
 Each guide gets a page under `/a/`, its own generated pin, and a place in the RSS feed. Queue order is guides first, then products. Add 1-2 new guides a week and the daily workflow keeps posting 3 pins/day.
+
+## Photo pins (recommended: photo-led pins perform better in beauty)
+Put product photos in `data/images/` and reference them with `"photo": "name.jpg"` in `products.json`.
+- A product with a photo gets a photo pin: headline on top, photo in a rounded white card.
+- A guide whose products have photos gets a collage pin (up to 3 products).
+- No photo = the gradient text pin.
+Only use photos you own or that your affiliate program explicitly lets you use (Amazon SiteStripe/Associates creatives, merchant creatives from EarnKaro/Cuelinks). Don't copy images off product pages.
