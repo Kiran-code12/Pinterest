@@ -1,5 +1,9 @@
 # Architecture and status
 
+> **Current MVP = manual publishing.** Pins are generated and stored as **drafts**; you download the image, copy the text and post
+> on Pinterest yourself. `DIRECT_PUBLISHING_ENABLED=false` (default) installs `DisabledPinterestProvider` (no network code) so no
+> Pinterest request can occur. The direct-publishing machinery described below is complete, tested and dormant.
+
 ## Stack and why
 Python 3.11+, FastAPI (HTML pages and JSON API), SQLAlchemy 2 + SQLite (zero-cost; swap `DATABASE_URL` for Postgres
 later), Jinja2 templates (no JS build step), Pillow for pin images, httpx for all outbound HTTP, `cryptography`
@@ -26,6 +30,17 @@ original URL, affiliate URL, validity) · `pin_templates` · `pins` (**`affiliat
 affiliate URL, asset, provider, simulated flag) · `analytics` (source = `pinterest` or `manual`, raw payload) ·
 `pinterest_connections` (account, **encrypted** tokens, scopes, default board, status) · `pinterest_boards` (cache) ·
 `app_settings` (disclosure text; no secrets).
+
+## Draft workflow (`services/drafts.py`, `web/pages.py`)
+`create_pins` always leaves pins in status `draft`. The Draft Library (`/drafts`) lists by view (drafts / published / archived /
+all) with search, design filter and paging. Per draft: edit text, regenerate copy, regenerate/change design (all create new
+`pin_variations` / `pin_assets`, nothing is overwritten), `final_texts()` (the exact title, description incl. the configured
+disclosure, affiliate URL and alt text to paste), PNG/JPG download, ZIP+CSV export (CSV cells are formula-neutralised),
+`mark_published_manually` (validates the affiliate chain and the optional pin URL, stores a `published_pins` row with
+`mode=manual`), `move_back_to_draft`, `archive`/`restore` (remembers the previous status), `delete` (removes DB rows, then files,
+only inside the assets folder; refuses pins published through the API). Statuses: `draft`, `published_manually`, `archived`
+(+ the dormant direct-publishing states `approved`, `scheduled`, `publishing`, `published`, `failed`, `rejected`). Existing
+databases get new columns automatically (`Database.add_missing_columns`).
 
 ## Key flows
 **Affiliate link integrity.** `check_destination(pin)` verifies: link exists, flagged valid, pin URL == link URL, not the plain
@@ -64,9 +79,12 @@ calls the same `publish_pin`; it never overrides duplicate protection, stops on 
 | Mock Pinterest provider incl. expired token, revoked, rate limit, invalid board/image/url, outages | done |
 | Queue page, scheduling, worker, daily cap | done (automatic publishing is opt-in) |
 | Analytics: official endpoint sync, manual entry, Pinterest-reported vs calculated, simple insights | done |
+| Draft Library, manual publishing records, archive/restore/delete, downloads, ZIP+CSV export, copy buttons | done, tested incl. real-browser run |
 | Export ZIP fallback | done |
 
 ## Known limitations
+* The copy buttons use the browser clipboard API (works on `localhost`/https) with a fallback for other contexts.
+* "Published manually" is a record you create: the app cannot verify that the pin really exists on Pinterest.
 * **Nothing has touched your real accounts.** The real Pinterest and Amazon code paths follow public documentation and are
   covered with mocked HTTP; expect small adjustments on first live contact (field names, error texts). See INTEGRATIONS.md.
 * Pinterest apps start with *Trial* access (pins are visible only to you); *Standard* access needs Pinterest's review.

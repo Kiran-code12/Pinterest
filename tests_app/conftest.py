@@ -16,7 +16,7 @@ PASSWORD = "correct-horse-battery-1"
 
 def make_settings(tmp_path, **extra):
     env = {"DATA_DIR": str(tmp_path), "ADMIN_PASSWORD": PASSWORD, "SECRET_KEY": "k" * 48,
-           "PINTEREST_PROVIDER": "mock", "ACTION_RATE_LIMIT": "1000", "LOGIN_RATE_LIMIT": "50"}
+           "PINTEREST_PROVIDER": "mock", "DIRECT_PUBLISHING_ENABLED": "true", "ACTION_RATE_LIMIT": "1000", "LOGIN_RATE_LIMIT": "50"}
     env.update(extra)
     return build_settings(env)
 

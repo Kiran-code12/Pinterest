@@ -25,10 +25,10 @@ from ..models import (
 )
 from ..pinterest.errors import PinterestError
 from ..providers.base import Capability, ProviderError
-from ..publishers.export import pin_payload
 from ..security import UnsafeURL, hash_password, validate_http_url, verify_password
 from ..services import analytics as analytics_svc
 from ..services import app_settings
+from ..services import drafts as draft_svc
 from ..services import pins as pin_svc
 from ..services import products as product_svc
 from ..services import publishing as pub_svc
@@ -57,7 +57,9 @@ def render(request: Request, name: str, status_code: int = 200, **ctx):
     messages = request.session.pop("flash", [])
     pconn = request.app.state.pinterest
     ctx.update(csrf_token=deps.csrf_token(request), flash_messages=messages, logged_in=bool(uid),
-               simulation=pconn.provider.simulated, score_label=SCORE_LABEL, app_env=settings.env,
+               direct_publishing=settings.direct_publishing_enabled,
+               simulation=settings.direct_publishing_enabled and pconn.provider.simulated,
+               score_label=SCORE_LABEL, app_env=settings.env,
                local_dt=lambda dt: (pub_svc.to_local(dt, settings).strftime("%d %b %Y, %H:%M")
                                     if dt else "-"))
     return templates.TemplateResponse(request, name, ctx, status_code=status_code)
@@ -123,7 +125,9 @@ def dashboard_stats(db: Session) -> dict:
         "products_found": count(Product, Product.status != "archived"),
         "products_selected": count(Product, Product.status == "selected"),
         "pins_generated": count(Pin),
-        "pins_pending": count(Pin, Pin.status == "ready_for_review"),
+        "drafts": count(Pin, Pin.status.in_(draft_svc.ACTIVE_VIEWS["drafts"])),
+        "published_manually": count(Pin, Pin.status == "published_manually"),
+        "archived": count(Pin, Pin.status == "archived"),
         "pins_approved": count(Pin, Pin.status == "approved"),
         "pins_scheduled": count(Pin, Pin.status == "scheduled"),
         "pins_published": count(Pin, Pin.status == "published"),
@@ -135,7 +139,7 @@ def dashboard_stats(db: Session) -> dict:
 def dashboard(request: Request, db: Session = Depends(deps.get_db)):
     s = request.app.state.settings
     recent = db.scalars(select(Pin).options(selectinload(Pin.assets), selectinload(Pin.product))
-                        .order_by(Pin.id.desc()).limit(8)).all()
+                        .where(Pin.status != "archived").order_by(Pin.id.desc()).limit(8)).all()
     queue = db.scalars(select(PublishingQueueItem).where(PublishingQueueItem.status == "scheduled")
                        .order_by(PublishingQueueItem.scheduled_for).limit(6)).all()
     registry = request.app.state.registry
@@ -145,6 +149,9 @@ def dashboard(request: Request, db: Session = Depends(deps.get_db)):
     if not registry["amazon"].is_configured():
         notices.append("Amazon Creators API is not configured: use CSV import or add credentials (see Settings).")
     conn = request.app.state.pinterest.get(db)
+    if not s.direct_publishing_enabled:
+        notices.append("Manual workflow: pins are saved as drafts. Download the image, copy the title, description and "
+                       "affiliate link from the Draft Library and post on Pinterest yourself.")
     return render(request, "dashboard.html", stats=dashboard_stats(db), recent=recent, queue=queue,
                   perf=analytics_svc.pinterest_reported(db), notices=notices, conn=conn,
                   published_today=pub_svc.published_today(db, s), max_per_day=s.max_pins_per_day)
@@ -328,41 +335,134 @@ def create_submit(request: Request, product_id: int = Form(...), count: int = Fo
     if product.status == "discovered":
         product.status = "selected"
         db.commit()
-    flash(request, f"Created {len(created)} pins. Review, edit and approve them below.", "ok")
-    return back(f"/pins?product_id={product_id}")
+    flash(request, f"Saved {len(created)} drafts. Review them here, then download the image and copy the text "
+                   "to post on Pinterest.", "ok")
+    return back(f"/drafts?product_id={product_id}")
 
 
-# ---- pins ---------------------------------------------------------------------------------------------
-@router.get("/pins", dependencies=auth)
-def pins_page(request: Request, status: str = "", product_id: int = 0, db: Session = Depends(deps.get_db)):
-    stmt = select(Pin).options(selectinload(Pin.assets), selectinload(Pin.product), selectinload(Pin.queue_item))
-    if status:
-        stmt = stmt.where(Pin.status == status)
-    if product_id:
-        stmt = stmt.where(Pin.product_id == product_id)
-    pins = db.scalars(stmt.order_by(Pin.id.desc()).limit(120)).all()
-    return render(request, "pins.html", pins=pins, status_filter=status, product_id=product_id,
-                  statuses=["draft", "ready_for_review", "approved", "scheduled", "publishing", "published", "failed", "rejected"])
-
-
+# ---- Draft Library (MVP: you publish manually) ---------------------------------------------------------------
 def _pin(db: Session, pid: int) -> Pin:
     return get_or_404(db, Pin, pid)
 
 
+@router.get("/pins", dependencies=auth)
+def pins_redirect():
+    return back("/drafts")
+
+
 @router.get("/pins/{pid}", dependencies=auth)
-def pin_detail(request: Request, pid: int, confirm: int = 0, board_id: str = "", db: Session = Depends(deps.get_db)):
+def pin_redirect(pid: int):
+    return back(f"/drafts/{pid}")
+
+
+@router.get("/drafts", dependencies=auth)
+def drafts_page(request: Request, view: str = "drafts", q: str = "", product_id: int = 0, template: str = "",
+                page: int = 1, db: Session = Depends(deps.get_db)):
+    view = view if view in ("drafts", "published", "archived", "all") else "drafts"
+    pins, total = draft_svc.list_library(db, view, q, product_id, template, page)
+    texts = {p.id: draft_svc.final_texts(db, p) for p in pins}
+    return render(request, "drafts.html", pins=pins, texts=texts, total=total, view=view, q=q, product_id=product_id,
+                  template_filter=template, page=max(1, page), pages=-(-total // draft_svc.PAGE_SIZE) or 1,
+                  counts=draft_svc.library_counts(db), templates_list=list(TEMPLATES.values()))
+
+
+@router.get("/drafts/{pid}", dependencies=auth)
+def draft_detail(request: Request, pid: int, confirm: int = 0, board_id: str = "", db: Session = Depends(deps.get_db)):
     pin = _pin(db, pid)
     st = request.app.state
-    conn = st.pinterest.get(db)
+    direct = st.settings.direct_publishing_enabled
     published = db.scalar(select(PublishedPin).where(PublishedPin.pin_id == pid))
-    findings = pub_svc.find_duplicates(db, pin, st.pinterest, board_id or None) if confirm else []
-    blockers = pub_svc.preflight(db, pin, st.pinterest, board_id or None) if pin.status in pub_svc.PUBLISHABLE else []
-    return render(request, "pin_detail.html", pin=pin, problems=pin_svc.check_destination(pin),
-                  templates_list=list(TEMPLATES.values()), payload=pin_payload(pin, app_settings.get(db, "disclosure_text")),
-                  next_slot=(pub_svc.next_slots(db, st.settings, 1) or [None])[0], conn=conn,
-                  boards=list(conn.boards) if conn else [], published=published, findings=findings,
-                  blockers=blockers, confirm_board=board_id, simulated=st.pinterest.provider.simulated,
-                  effective_board=pub_svc.resolve_board(db, pin, st.pinterest)[1] if conn else None)
+    ctx = dict(pin=pin, problems=pin_svc.check_destination(pin), templates_list=list(TEMPLATES.values()),
+               texts=draft_svc.final_texts(db, pin), published=published, similar=draft_svc.similar_published(db, pin),
+               can_edit=pin.status not in ("published", "publishing", "published_manually", "archived"),
+               conn=None, boards=[], findings=[], blockers=[], confirm_board=board_id, simulated=False,
+               effective_board=None, next_slot=None)
+    if direct:  # Pinterest panels (kept for when direct publishing is enabled later)
+        conn = st.pinterest.get(db)
+        ctx.update(conn=conn, boards=list(conn.boards) if conn else [], simulated=st.pinterest.provider.simulated,
+                   findings=pub_svc.find_duplicates(db, pin, st.pinterest, board_id or None) if confirm else [],
+                   blockers=pub_svc.preflight(db, pin, st.pinterest, board_id or None)
+                   if pin.status in pub_svc.PUBLISHABLE else [],
+                   effective_board=pub_svc.resolve_board(db, pin, st.pinterest)[1] if conn else None,
+                   next_slot=(pub_svc.next_slots(db, st.settings, 1) or [None])[0])
+    return render(request, "draft_detail.html", **ctx)
+
+
+@router.get("/drafts/{pid}/image.{ext}", dependencies=auth)
+def draft_image(request: Request, pid: int, ext: str, db: Session = Depends(deps.get_db)):
+    if ext not in ("png", "jpg"):
+        raise HTTPException(status_code=404, detail="Not found")
+    try:
+        data, filename, media = draft_svc.image_download(_pin(db, pid), request.app.state.settings, ext)
+    except pin_svc.PinError as ex:
+        raise HTTPException(status_code=404, detail=str(ex)) from ex
+    return Response(data, media_type=media, headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+
+
+@router.post("/drafts/export.zip", dependencies=secure)
+def drafts_export(request: Request, ids: list[int] = Form(default=[]), db: Session = Depends(deps.get_db)):
+    pins = [p for p in (db.get(Pin, i) for i in ids[:100]) if p is not None]
+    try:
+        data = draft_svc.export_zip(db, pins, request.app.state.settings)
+    except pin_svc.PinError as ex:
+        flash(request, str(ex), "error")
+        return back("/drafts")
+    return Response(data, media_type="application/zip",
+                    headers={"Content-Disposition": 'attachment; filename="pinterest-drafts.zip"'})
+
+
+@router.post("/drafts/bulk-archive", dependencies=secure)
+def drafts_bulk_archive(request: Request, ids: list[int] = Form(default=[]), db: Session = Depends(deps.get_db)):
+    done = 0
+    for i in ids[:200]:
+        pin = db.get(Pin, i)
+        if pin is not None:
+            try:
+                draft_svc.archive(db, pin)
+                done += 1
+            except pin_svc.PinError:
+                pass
+    flash(request, f"Archived {done} drafts." if done else "Nothing selected.", "ok" if done else "warn")
+    return back("/drafts")
+
+
+@router.post("/drafts/{pid}/mark-published", dependencies=secure)
+def draft_mark_published(request: Request, pid: int, pinterest_url: str = Form(""), board_name: str = Form(""),
+                         db: Session = Depends(deps.get_db)):
+    pin = _pin(db, pid)
+    return _guard(request, pid, lambda: draft_svc.mark_published_manually(db, pin, pinterest_url or None,
+                                                                           board_name or None),
+                  "Marked as published manually. It now lives under 'Published' in the Draft Library.", db)
+
+
+@router.post("/drafts/{pid}/move-to-draft", dependencies=secure)
+def draft_move_back(request: Request, pid: int, db: Session = Depends(deps.get_db)):
+    pin = _pin(db, pid)
+    return _guard(request, pid, lambda: draft_svc.move_back_to_draft(db, pin), "Moved back to drafts.", db)
+
+
+@router.post("/drafts/{pid}/archive", dependencies=secure)
+def draft_archive(request: Request, pid: int, db: Session = Depends(deps.get_db)):
+    pin = _pin(db, pid)
+    return _guard(request, pid, lambda: draft_svc.archive(db, pin), "Archived. Find it under 'Archived'.", db)
+
+
+@router.post("/drafts/{pid}/restore", dependencies=secure)
+def draft_restore(request: Request, pid: int, db: Session = Depends(deps.get_db)):
+    pin = _pin(db, pid)
+    return _guard(request, pid, lambda: draft_svc.restore(db, pin), "Restored.", db)
+
+
+@router.post("/drafts/{pid}/delete", dependencies=secure)
+def draft_delete(request: Request, pid: int, db: Session = Depends(deps.get_db)):
+    pin = _pin(db, pid)
+    try:
+        draft_svc.delete(db, pin, request.app.state.settings)
+    except pin_svc.PinError as ex:
+        flash(request, str(ex), "error")
+        return back(f"/drafts/{pid}")
+    flash(request, "Draft deleted permanently.", "ok")
+    return back("/drafts")
 
 
 def _guard(request: Request, pid: int, fn, ok_message: str, db: Session):
@@ -371,7 +471,7 @@ def _guard(request: Request, pid: int, fn, ok_message: str, db: Session):
         flash(request, ok_message, "ok")
     except (pin_svc.PinError, pub_svc.PublishError, ProviderError, PinterestError) as ex:
         flash(request, str(ex), "error")
-    return back(f"/pins/{pid}")
+    return back(f"/drafts/{pid}")
 
 
 @router.post("/pins/{pid}/edit", dependencies=secure)
@@ -387,11 +487,11 @@ def pin_edit(request: Request, pid: int, headline: str = Form(""), supporting_te
             "show_price": bool(show_price), "show_disclosure": bool(show_disclosure)}, s.settings, s.http)
     except pin_svc.PinError as ex:
         flash(request, str(ex), "error")
-        return back(f"/pins/{pid}")
+        return back(f"/drafts/{pid}")
     flash(request, "Saved. Approval was reset: review and approve again.", "ok")
     for w in warns:
         flash(request, f"Check wording: {w}", "warn")
-    return back(f"/pins/{pid}")
+    return back(f"/drafts/{pid}")
 
 
 @router.post("/pins/{pid}/regenerate-copy", dependencies=secure)
@@ -433,7 +533,7 @@ def pin_schedule(request: Request, pid: int, when: str = Form(""), db: Session =
             scheduled = local.astimezone(timezone.utc).replace(tzinfo=None)
         except ValueError:
             flash(request, "Invalid date/time.", "error")
-            return back(f"/pins/{pid}")
+            return back(f"/drafts/{pid}")
     return _guard(request, pid, lambda: pub_svc.enqueue(db, pin, s.settings, scheduled_for=scheduled,
                                                          allow_demo=s.pinterest.provider.simulated),
                   "Pin scheduled. It is published at that time only when the scheduler runs (see Settings).", db)
@@ -449,19 +549,12 @@ def pin_unschedule(request: Request, pid: int, db: Session = Depends(deps.get_db
 def pin_export(request: Request, pid: int, db: Session = Depends(deps.get_db)):
     pin = _pin(db, pid)
     try:
-        data = pub_svc.export_pin(db, pin)
-    except pub_svc.PublishError as ex:
+        data = draft_svc.export_zip(db, [pin], request.app.state.settings)
+    except pin_svc.PinError as ex:
         flash(request, str(ex), "error")
-        return back(f"/pins/{pid}")
+        return back(f"/drafts/{pid}")
     return Response(data, media_type="application/zip",
-                    headers={"Content-Disposition": f"attachment; filename=pin_{pid}.zip"})
-
-
-@router.post("/pins/{pid}/mark-published", dependencies=secure)
-def pin_mark_published(request: Request, pid: int, pinterest_url: str = Form(""), db: Session = Depends(deps.get_db)):
-    pin = _pin(db, pid)
-    return _guard(request, pid, lambda: pub_svc.mark_published(db, pin, pinterest_url or None),
-                  "Recorded as manually published.", db)
+                    headers={"Content-Disposition": f'attachment; filename="pin-{pid}.zip"'})
 
 
 @router.post("/pins/{pid}/board", dependencies=secure)
@@ -482,14 +575,14 @@ def pin_publish(request: Request, pid: int, board_id: str = Form(""), force: str
                         "Published successfully. ") + f"Pinterest pin ID: {pub.pinterest_pin_id}", "ok")
     except pub_svc.DuplicateWarning:
         flash(request, "Possible duplicate: please review and confirm below.", "warn")
-        return back(f"/pins/{pid}?confirm=1&board_id={board_id}")
+        return back(f"/drafts/{pid}?confirm=1&board_id={board_id}")
     except pub_svc.PublishFailed as ex:
         flash(request, f"Publishing failed: {ex}", "error")
         if ex.error.needs_reconnect:
             flash(request, "Please reconnect Pinterest in Settings, then press Retry.", "warn")
     except pub_svc.PublishError as ex:
         flash(request, str(ex), "error")
-    return back(f"/pins/{pid}")
+    return back(f"/drafts/{pid}")
 
 
 @router.post("/pins/schedule-approved", dependencies=secure)
@@ -522,10 +615,13 @@ def queue_process(request: Request, db: Session = Depends(deps.get_db)):
 
 @router.get("/queue", dependencies=auth)
 def queue_page(request: Request, db: Session = Depends(deps.get_db)):
+    if not request.app.state.settings.direct_publishing_enabled:
+        flash(request, "The publishing queue is only used when direct publishing is enabled. Use the Draft Library.", "info")
+        return back("/drafts")
     items = db.scalars(select(PublishingQueueItem).options(selectinload(PublishingQueueItem.pin)
                                                            .selectinload(Pin.product))
                        .order_by(PublishingQueueItem.id.desc()).limit(200)).all()
-    ready = db.scalars(select(Pin).options(selectinload(Pin.product)).where(Pin.status.in_(["ready_for_review", "approved"]))
+    ready = db.scalars(select(Pin).options(selectinload(Pin.product)).where(Pin.status.in_(["draft", "approved"]))
                        .order_by(Pin.id.desc()).limit(100)).all()
     return render(request, "queue.html", items=items, ready=ready, scheduler_on=request.app.state.settings.scheduler_enabled)
 

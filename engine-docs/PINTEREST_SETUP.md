@@ -1,5 +1,9 @@
 # Connect your real Pinterest account (no password, no token pasting)
 
+> **Not needed for the current MVP.** The app is in manual-publishing mode (`DIRECT_PUBLISHING_ENABLED=false`): you post drafts
+> yourself and nothing here applies. Follow this guide only when you decide to enable direct publishing, then set
+> `DIRECT_PUBLISHING_ENABLED=true` in `.env` in addition to the variables below.
+
 You will register a small "app" with Pinterest, give this tool its **id/secret/redirect URI via `.env`**, and then approve
 access once on Pinterest's own page. You never type your Pinterest password into this tool and you never paste a token anywhere.
 

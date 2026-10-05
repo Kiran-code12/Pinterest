@@ -22,7 +22,7 @@ from sqlalchemy.orm import Session
 from ..config import Settings
 from ..models import Pin, PublishedPin, PublishingQueueItem, utcnow
 from ..pinterest.connection import ConnectionService
-from ..pinterest.errors import PinterestError, ServiceUnavailable
+from ..pinterest.errors import DirectPublishingDisabled, PinterestError, ServiceUnavailable
 from ..pinterest.types import PinPayload
 from ..publishers.export import build_export_zip, pin_payload
 from . import app_settings
@@ -199,6 +199,8 @@ def build_payload(db: Session, pin: Pin, board_id: str) -> PinPayload:
 def publish_pin(db: Session, pin: Pin, settings: Settings, conn_svc: ConnectionService, *, force: bool = False,
                 board_id: str | None = None) -> PublishedPin:
     """Publish ONE approved pin to the connected Pinterest account via the official API."""
+    if not settings.direct_publishing_enabled:
+        raise PublishError(str(DirectPublishingDisabled()))
     blockers = preflight(db, pin, conn_svc, board_id)
     if blockers:
         raise PublishError(" ".join(blockers))
@@ -304,6 +306,9 @@ def process_due(db: Session, settings: Settings, conn_svc: ConnectionService, no
     (The background worker only calls this when SCHEDULER_ENABLED=true; the dashboard button always may.)"""
     now = now or utcnow()
     report = {"published": 0, "failed": 0, "skipped": 0, "messages": []}
+    if not settings.direct_publishing_enabled:
+        report["messages"].append(str(DirectPublishingDisabled()))
+        return report
     due = db.scalars(select(PublishingQueueItem).where(
         PublishingQueueItem.status == "scheduled", PublishingQueueItem.destination == "pinterest",
         PublishingQueueItem.scheduled_for <= now).order_by(PublishingQueueItem.scheduled_for)).all()

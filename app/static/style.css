@@ -13,7 +13,7 @@ main{max-width:1200px;margin:20px auto;padding:0 16px}h1{margin:.2em 0 .6em;font
 .pin{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;display:flex;flex-direction:column}
 .pin img{width:100%;aspect-ratio:2/3;object-fit:cover;background:#eee}.pin .b{padding:10px;font-size:.88rem;display:flex;flex-direction:column;gap:6px;flex:1}
 .badge{display:inline-block;padding:2px 9px;border-radius:99px;font-size:.75rem;background:#eee;color:#444}
-.badge.ready_for_review,.badge.draft{background:#fff2d8;color:#8a5a00}.badge.publishing{background:#e8e1f7;color:#4b3a8f}.badge.approved{background:#dff3e8;color:var(--ok)}
+.badge.draft{background:#fff2d8;color:#8a5a00}.badge.published_manually{background:#d5f0e0;color:#1d6a43}.badge.archived{background:#e6e3e4;color:#6a6266}.badge.publishing{background:#e8e1f7;color:#4b3a8f}.badge.approved{background:#dff3e8;color:var(--ok)}
 .badge.scheduled{background:#e2e9fb;color:#2c4aa0}.badge.published{background:#d5f0e0;color:#1d6a43}
 .badge.rejected,.badge.failed{background:#fde2e2;color:var(--err)}.badge.selected{background:#dff3e8;color:var(--ok)}
 .badge.demo{background:#ece4f7;color:#5b3d96}
@@ -42,3 +42,4 @@ button.sec,.btn.sec{background:#efe7ea;color:var(--ink)}button.danger{background
 a.pin{text-decoration:none;color:inherit}.c-warn{color:var(--warn)}.c-ok{color:var(--ok)}.c-err{color:var(--err)}
 .ok-card{border-color:var(--ok)}.scorecell{min-width:110px;white-space:nowrap}
 meter{width:70px;height:10px;vertical-align:middle}meter::-webkit-meter-optimum-value,meter::-webkit-meter-suboptimum-value,meter::-webkit-meter-even-less-good-value{background:var(--accent)}
+.row>.noflex{flex:0 0 auto;min-width:0}

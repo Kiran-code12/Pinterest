@@ -1,6 +1,7 @@
 {% extends "base.html" %}{% from "base.html" import csrf %}{% block title %}Settings{% endblock %}
 {% block body %}<h1>Settings</h1>
 <p class="muted">Credentials (API keys, the Pinterest client secret) come from environment variables / <span class="mono">.env</span>: they are never stored in the database, shown here or logged. The access token Pinterest issues when you press Connect is the only secret kept in the database, and it is encrypted.</p>
+{% if direct_publishing %}
 <div class="card"><h2>Pinterest</h2>
 {% if conn and conn.status == 'connected' %}
 <p><span class="badge approved">● Connected</span> &nbsp; Account: <b>@{{ conn.username }}</b>{% if conn.account_type %} ({{ conn.account_type|lower }}){% endif %}{% if pin_provider.simulated %} <span class="badge demo">simulated</span>{% endif %}</p>
@@ -22,6 +23,11 @@
 {% endif %}
 {% if conn and conn.status != 'connected' %}<form method="post" action="/pinterest/disconnect" class="inline">{{ csrf() }}<button class="sec" type="submit">Remove stored connection</button></form>{% endif %}
 <p class="small muted">Provider: {{ pin_provider.name }} · Scheduler: {{ 'ON' if s.scheduler_enabled else 'OFF (manual publish only)' }} · Daily limit for the scheduler: {{ s.max_pins_per_day }} ({{ s.schedule_slots|join(', ') }} {{ s.schedule_tz }})</p></div>
+{% else %}
+<div class="card"><h2>Publishing: manual workflow (current MVP)</h2>
+<p>The app does <b>not</b> contact Pinterest. It prepares drafts: you download the image, copy the title, description and affiliate link from the <a href="/drafts">Draft Library</a>, post on Pinterest yourself and mark the draft as published.</p>
+<p class="small muted">The official-API integration (OAuth, boards, publishing, scheduling, analytics sync) is built, tested and isolated behind <span class="mono">DIRECT_PUBLISHING_ENABLED</span>. When your Pinterest app has the access you need, set <span class="mono">DIRECT_PUBLISHING_ENABLED=true</span> in <span class="mono">.env</span> and follow <span class="mono">engine-docs/PINTEREST_SETUP.md</span>. Until then no Pinterest request can be made.</p></div>
+{% endif %}
 <div class="grid g2">
 <form class="card" method="post" action="/settings/disclosure">{{ csrf() }}<h2>Affiliate disclosure</h2>
 <label>Text added to the pin description (when the pin's disclosure option is ticked)</label><textarea name="disclosure_text" maxlength="160">{{ disclosure_text }}</textarea>

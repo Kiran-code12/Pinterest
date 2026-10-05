@@ -55,6 +55,12 @@ def check_destination(pin: Pin) -> list[str]:
     return problems
 
 
+def _locked_message(pin: Pin) -> str:
+    return {"published_manually": "This pin is marked as published. Use 'Move back to drafts' before editing it.",
+            "archived": "This pin is archived. Restore it before editing.",
+            }.get(pin.status, "This pin is published or being published and cannot be edited")
+
+
 def _sanitize(value, limit: int) -> str:
     return CTRL.sub("", str(value or "")).strip()[:limit]
 
@@ -155,16 +161,15 @@ def create_pins(db: Session, product: Product, ai: AIProvider, settings: Setting
         db.flush()
         _add_variation(pin, copy.source, copy.as_dict())
         render_asset(db, pin, settings, http)
-        pin.status = "ready_for_review"  # generation finished: the pin is now waiting for the user's review
-        pins.append(pin)
+        pins.append(pin)  # every generated pin is saved as a DRAFT (status stays "draft")
     db.commit()
     return pins
 
 
 def update_pin(db: Session, pin: Pin, data: dict, settings: Settings, http: httpx.Client | None = None) -> list[str]:
     """Manual edit. Returns non-blocking grounding warnings. Resets approval (content changed)."""
-    if pin.status in ("published", "publishing"):
-        raise PinError("This pin is published or being published and cannot be edited")
+    if pin.status in ("published", "publishing", "published_manually", "archived"):
+        raise PinError(_locked_message(pin))
     for key, limit in EDITABLE_TEXT.items():
         if key in data and data[key] is not None:
             setattr(pin, key, _sanitize(data[key], limit))
@@ -194,7 +199,7 @@ def update_pin(db: Session, pin: Pin, data: dict, settings: Settings, http: http
 
 def _reset_approval(db: Session, pin: Pin) -> None:
     if pin.status in ("approved", "scheduled", "failed", "rejected", "draft"):
-        pin.status, pin.approved_at = "ready_for_review", None
+        pin.status, pin.approved_at = "draft", None
         if pin.queue_item is not None:
             db.delete(pin.queue_item)
             pin.queue_item = None
@@ -202,8 +207,8 @@ def _reset_approval(db: Session, pin: Pin) -> None:
 
 def regenerate_copy(db: Session, pin: Pin, ai: AIProvider, settings: Settings,
                     http: httpx.Client | None = None) -> PinCopy:
-    if pin.status in ("published", "publishing"):
-        raise PinError("Published pins cannot be regenerated")
+    if pin.status in ("published", "publishing", "published_manually", "archived"):
+        raise PinError(_locked_message(pin))
     n = len(pin.variations)
     concept = CONCEPT_ORDER[n % len(CONCEPT_ORDER)]
     copy = generate_copy(pin.product, ai, concept, variation=n)
@@ -217,8 +222,8 @@ def regenerate_copy(db: Session, pin: Pin, ai: AIProvider, settings: Settings,
 
 def regenerate_image(db: Session, pin: Pin, settings: Settings, template_key: str | None = None,
                      http: httpx.Client | None = None) -> PinAsset:
-    if pin.status in ("published", "publishing"):
-        raise PinError("Published pins cannot be changed")
+    if pin.status in ("published", "publishing", "published_manually", "archived"):
+        raise PinError(_locked_message(pin))
     if template_key:
         if template_key not in TEMPLATES:
             raise PinError("Unknown template")
@@ -230,7 +235,7 @@ def regenerate_image(db: Session, pin: Pin, settings: Settings, template_key: st
 
 
 def approve(db: Session, pin: Pin) -> None:
-    if pin.status not in ("ready_for_review", "rejected"):
+    if pin.status not in ("draft", "rejected"):
         raise PinError(f"A pin in status '{pin.status.replace('_', ' ')}' cannot be approved")
     problems = check_destination(pin)
     if problems:

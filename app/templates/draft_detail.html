@@ -1,0 +1,85 @@
+{% extends "base.html" %}{% from "base.html" import csrf, badge %}{% block title %}Draft {{ pin.id }}{% endblock %}
+{% block body %}<p class="small"><a href="/drafts">← Draft Library</a></p>
+<h1>Draft #{{ pin.id }} {{ badge(pin.status) }}</h1>
+{% if pin.status == 'archived' %}<div class="flash info">This draft is archived. <form method="post" action="/drafts/{{ pin.id }}/restore" class="inline">{{ csrf() }}<button class="sec" type="submit">Restore</button></form></div>{% endif %}
+<div class="split"><div>
+{% if pin.current_asset %}<img class="preview" src="/assets/pin/{{ pin.id }}" alt="Pin preview">
+<div class="actions"><a class="btn" href="/drafts/{{ pin.id }}/image.png">Download image (PNG)</a><a class="btn sec" href="/drafts/{{ pin.id }}/image.jpg">JPG</a>
+<form method="post" action="/pins/{{ pin.id }}/export" class="inline">{{ csrf() }}<button class="sec" type="submit">ZIP (image + text)</button></form></div>
+<p class="small muted">{{ pin.current_asset.width }}×{{ pin.current_asset.height }} px (2:3), the size Pinterest recommends.</p>{% endif %}
+<div class="card"><h2>Affiliate destination</h2>
+<p class="small muted">Product → {{ pin.product.provider.name }} → affiliate link → this pin</p>
+<p><a href="/products/{{ pin.product_id }}">{{ pin.product.title[:60] }}</a></p>
+<p class="small"><b>Original product URL:</b> <span class="mono">{{ pin.affiliate_link.original_url or '-' }}</span></p>
+<p class="small"><b>Affiliate URL:</b> <span class="mono">{{ pin.destination_url }}</span></p>
+{% for pr in problems %}<div class="flash error">{{ pr }}</div>{% else %}<span class="badge approved">affiliate destination verified</span>{% endfor %}
+{% if pin.product.provider.is_demo %}<p><span class="badge demo">demo product: fictional, do not post</span></p>{% endif %}</div></div>
+<div>
+{% if pin.warnings %}<div class="flash warn"><b>Wording checks:</b><ul>{% for w in pin.warnings %}<li>{{ w }}</li>{% endfor %}</ul></div>{% endif %}
+{% for s in similar %}{% if s.same_variation or s.same_image %}<div class="flash warn">You already published a very similar pin of this product (draft #{{ s.pin_id }}, {{ local_dt(s.published_at) }}). Pinterest prefers fresh pins: consider a different design or wording.</div>{% endif %}{% endfor %}
+
+{% if published and published.mode == 'api' %}<div class="card ok-card"><h2 class="c-ok">✓ {{ 'Published (simulated)' if published.simulated else 'Published successfully' }}</h2>
+<p>Pinterest Pin ID:<br><b class="mono" id="pid">{{ published.pinterest_pin_id }}</b> <button type="button" class="sec copy" data-copy="pid">Copy</button></p>
+<p class="small">Board: {{ published.board_name or published.board_id or '-' }} · {{ local_dt(published.published_at) }} · via {{ published.provider }}</p>
+{% if published.pinterest_url %}<p><a class="btn" href="{{ published.pinterest_url }}" target="_blank" rel="noopener noreferrer">View Pin</a></p>{% else %}<p class="small muted">Pinterest's API did not return a link for this pin, so no "View Pin" button is shown. You can find it on your board.</p>{% endif %}
+<p class="small"><b>Title:</b> {{ published.title }}<br><b>Destination (affiliate):</b> <span class="mono">{{ published.destination_url }}</span></p></div>{% endif %}
+
+<div class="card"><h2>Copy for Pinterest</h2>
+<label for="c_title">Title</label><div class="row"><input type="text" id="c_title" value="{{ texts.title }}" readonly><div class="noflex"><button type="button" class="sec" data-copy="c_title">Copy title</button></div></div>
+<label for="c_desc">Description (includes your disclosure when ticked)</label><textarea id="c_desc" readonly>{{ texts.description }}</textarea><p><button type="button" class="sec" data-copy="c_desc">Copy description</button></p>
+<label for="c_url">Affiliate URL</label><div class="row"><input type="text" id="c_url" value="{{ texts.url }}" readonly><div class="noflex"><button type="button" class="sec" data-copy="c_url">Copy affiliate URL</button></div></div>
+<label for="c_alt">Alt text (optional field on Pinterest)</label><div class="row"><input type="text" id="c_alt" value="{{ texts.alt }}" readonly><div class="noflex"><button type="button" class="sec" data-copy="c_alt">Copy alt text</button></div></div>
+<p><button type="button" data-copy-text="{{ texts['all'] }}">Copy title + description + link</button></p>
+<p class="small muted">On Pinterest: Create → Create Pin → upload the image, paste the title and description, paste the affiliate URL into "Destination link", choose a board, Publish. Then come back and mark it as published.</p></div>
+
+{% if pin.status == 'published_manually' %}<div class="card ok-card"><h2 class="c-ok">✓ Marked as published manually</h2>
+<p class="small">{{ local_dt(published.published_at) if published else '' }}{% if published and published.board_name %} · board: {{ published.board_name }}{% endif %}</p>
+{% if published and published.pinterest_url %}<p><a href="{{ published.pinterest_url }}" target="_blank" rel="noopener noreferrer">Open the pin you posted</a></p>{% endif %}
+<form method="post" action="/drafts/{{ pin.id }}/move-to-draft" class="inline" data-confirm="Move back to drafts? The 'published' record is removed.">{{ csrf() }}<button class="sec" type="submit">Move back to drafts</button></form></div>
+{% elif pin.status in ['draft','rejected','approved','scheduled','failed'] %}<div class="card"><h2>Posted it on Pinterest?</h2>
+<form method="post" action="/drafts/{{ pin.id }}/mark-published">{{ csrf() }}<div class="row"><div><label>Pin URL (optional)</label><input type="url" name="pinterest_url" placeholder="https://www.pinterest.com/pin/..."></div>
+<div><label>Board name (optional)</label><input type="text" name="board_name" maxlength="200"></div></div>
+<p><button type="submit">Mark as published manually</button></p></form></div>{% endif %}
+
+{% if can_edit %}
+<form method="post" action="/pins/{{ pin.id }}/edit" class="card"><h2>Edit</h2>{{ csrf() }}
+<label>Headline (on the image)</label><input type="text" name="headline" value="{{ pin.headline }}" maxlength="90">
+<label>Supporting text</label><input type="text" name="supporting_text" value="{{ pin.supporting_text }}" maxlength="140">
+<label>Pinterest title (max 100)</label><input type="text" name="seo_title" value="{{ pin.seo_title }}" maxlength="100">
+<label>Pinterest description (max 500)</label><textarea name="seo_description" maxlength="500">{{ pin.seo_description }}</textarea>
+<label>Keywords (comma separated)</label><input type="text" name="keywords" value="{{ (pin.keywords or [])|join(', ') }}">
+<div class="row"><div><label>Button text on the image</label><input type="text" name="cta" value="{{ pin.cta }}" maxlength="40"></div>
+<div><label>Design</label><select name="template_key">{% for t in templates_list %}<option value="{{ t.key }}" {{ 'selected' if t.key==pin.template_key }}>{{ t.name }}</option>{% endfor %}</select></div></div>
+<label class="check"><input type="checkbox" name="show_disclosure" value="1" {{ 'checked' if pin.show_disclosure }}> Include affiliate disclosure (wording in Settings)</label>
+<label class="check"><input type="checkbox" name="show_price" value="1" {{ 'checked' if pin.show_price }}> Show price on image (only if known and fresh)</label>
+<p class="small muted">Saving re-renders the image.</p><p><button type="submit">Save changes</button></p></form>
+<div class="card"><h2>Regenerate</h2><div class="actions">
+<form method="post" action="/pins/{{ pin.id }}/regenerate-copy" class="inline">{{ csrf() }}<button class="sec" type="submit">Regenerate title &amp; description</button></form></div>
+<form method="post" action="/pins/{{ pin.id }}/regenerate-image" class="row">{{ csrf() }}<div><label>New design</label><select name="template_key"><option value="">Same design (re-render)</option>{% for t in templates_list %}<option value="{{ t.key }}">{{ t.name }}</option>{% endfor %}</select></div><div><button class="sec" type="submit">Regenerate design</button></div></form>
+<p class="small muted">The previous copy stays in the version history below.</p></div>
+{% endif %}
+
+{% if direct_publishing and pin.status in ['draft','approved','scheduled','failed','rejected'] %}
+<div class="card"><h2>Direct publishing to Pinterest (enabled)</h2>
+{% if pin.status in ['draft','rejected'] %}<form method="post" action="/pins/{{ pin.id }}/approve" class="inline">{{ csrf() }}<button type="submit">Approve</button></form>{% endif %}
+{% if pin.status in ['approved','scheduled','failed'] %}
+{% if not conn %}<p class="flash warn">Pinterest is not connected. <a href="/settings">Connect Pinterest</a>.</p>
+{% elif conn.status != 'connected' %}<p class="flash error">Pinterest authorization expired or was revoked. <a href="/settings">Reconnect Pinterest</a>.</p>{% endif %}
+{% for b in blockers %}<div class="flash error">Publishing blocked: {{ b }}</div>{% endfor %}
+{% if findings %}<div class="card dup"><h2>Possible duplicate</h2><ul>{% for f in findings %}<li>{{ f.reason }}</li>{% endfor %}</ul>
+<form method="post" action="/pins/{{ pin.id }}/publish" class="inline">{{ csrf() }}<input type="hidden" name="force" value="1"><input type="hidden" name="board_id" value="{{ confirm_board }}"><button type="submit">Publish anyway</button></form> <a class="btn sec" href="/drafts/{{ pin.id }}">Cancel</a></div>{% endif %}
+{% if conn %}<form method="post" action="/pins/{{ pin.id }}/publish" id="pubform">{{ csrf() }}
+<label for="board">Board</label><select id="board" name="board_id"><option value="">Default board{% if conn.default_board_name %} ({{ conn.default_board_name }}){% endif %}</option>
+{% for b in boards %}<option value="{{ b.board_id }}" {{ 'selected' if pin.board_id == b.board_id }}>{{ b.name }}</option>{% endfor %}</select>
+<p class="small muted">Account: @{{ conn.username }}{% if simulated %} (simulated){% endif %} · board used: <b>{{ effective_board or 'none selected' }}</b></p>
+<p><button type="submit" data-confirm="Publish this pin {{ 'in SIMULATION mode' if simulated else 'to your real Pinterest account' }} now?" {{ 'disabled' if blockers }}>{{ 'Retry publish' if pin.status == 'failed' else 'Publish' }}</button></p></form>{% endif %}
+{% if pin.status == 'failed' and pin.queue_item %}<div class="flash error">Reason: {{ pin.queue_item.last_error }}</div>{% endif %}
+{% endif %}</div>{% endif %}
+
+<div class="card"><h2>Draft actions</h2><div class="actions">
+{% if pin.status != 'archived' and pin.status != 'publishing' %}<form method="post" action="/drafts/{{ pin.id }}/archive" class="inline">{{ csrf() }}<button class="sec" type="submit">Archive</button></form>{% endif %}
+{% if pin.status == 'archived' %}<form method="post" action="/drafts/{{ pin.id }}/restore" class="inline">{{ csrf() }}<button class="sec" type="submit">Restore</button></form>{% endif %}
+{% if pin.status not in ['published','publishing'] %}<form method="post" action="/drafts/{{ pin.id }}/delete" class="inline" data-confirm="Delete this draft permanently, including its images?">{{ csrf() }}<button class="danger" type="submit">Delete permanently</button></form>{% endif %}</div></div>
+
+<div class="card"><h2>Version history</h2>{% for v in pin.variations|reverse %}<p class="small"><b>v{{ v.version }}</b> · {{ v.source }} · {{ local_dt(v.created_at) }}<br>{{ v.content.get('headline') }} — {{ v.content.get('seo_title') }}</p>{% endfor %}</div>
+</div></div>{% endblock %}

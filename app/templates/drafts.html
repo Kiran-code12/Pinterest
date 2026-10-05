@@ -1,0 +1,31 @@
+{% extends "base.html" %}{% from "base.html" import csrf, badge %}{% block title %}Draft Library{% endblock %}
+{% block body %}<h1>Draft Library</h1>
+<p class="muted">Every generated pin is saved here as a draft. Open one to edit or regenerate it, download the image, copy the text, then post it on Pinterest yourself and mark it as published.</p>
+<div class="actions">
+{% for key, label in [('drafts','Drafts'),('published','Published'),('archived','Archived'),('all','All')] %}<a class="btn {{ '' if view==key else 'sec' }}" href="/drafts?view={{ key }}">{{ label }} ({{ counts[key] }})</a>{% endfor %}
+<a class="btn" href="/create">+ Create pins</a></div>
+<form method="get" class="card row"><input type="hidden" name="view" value="{{ view }}">
+<div><label>Search</label><input type="search" name="q" value="{{ q }}" placeholder="headline, title or product"></div>
+<div><label>Design</label><select name="template"><option value="">All</option>{% for t in templates_list %}<option value="{{ t.key }}" {{ 'selected' if template_filter==t.key }}>{{ t.name }}</option>{% endfor %}</select></div>
+<div><button type="submit">Filter</button></div></form>
+<form method="post" action="/drafts/export.zip">{{ csrf() }}
+<div class="actions"><button type="submit" class="sec">Download selected as ZIP (images + CSV)</button>
+<button type="submit" class="sec" formaction="/drafts/bulk-archive" data-confirm="Archive the selected drafts?">Archive selected</button>
+<span class="muted small">{{ total }} pins</span></div>
+<div class="pins">{% for p in pins %}{% set t = texts[p.id] %}
+<div class="pin">
+<a href="/drafts/{{ p.id }}">{% if p.current_asset %}<img src="/assets/pin/{{ p.id }}" alt="Pin preview" loading="lazy">{% endif %}</a>
+<div class="b"><label class="check"><input type="checkbox" name="ids" value="{{ p.id }}"> <b>{{ p.headline[:70] }}</b></label>
+<span class="small muted">{{ p.product.title[:50] }}</span>
+<span>{{ badge(p.status) }} <span class="badge">{{ p.template_key|replace('_',' ') }}</span></span>
+<span class="small muted">{{ local_dt(p.created_at) }}</span>
+<div class="actions">
+<a class="btn sec copy" href="/drafts/{{ p.id }}/image.png">Download</a>
+<button type="button" class="sec copy" data-copy-text="{{ t.title }}">Title</button>
+<button type="button" class="sec copy" data-copy-text="{{ t.description }}">Description</button>
+<button type="button" class="sec copy" data-copy-text="{{ t.url }}">Link</button></div>
+<a class="small" href="/drafts/{{ p.id }}">Open / edit</a></div></div>
+{% else %}<p class="muted">{% if view == 'drafts' %}No drafts yet. <a href="/products">Find a product</a>, then <a href="/create">create pins</a>.{% else %}Nothing here.{% endif %}</p>{% endfor %}</div></form>
+<div class="pager">{% if page > 1 %}<a class="btn sec" href="?view={{ view }}&q={{ q }}&template={{ template_filter }}&page={{ page-1 }}">Previous</a>{% endif %}
+<span class="muted">Page {{ page }} / {{ pages }}</span>{% if page < pages %}<a class="btn sec" href="?view={{ view }}&q={{ q }}&template={{ template_filter }}&page={{ page+1 }}">Next</a>{% endif %}</div>
+{% endblock %}

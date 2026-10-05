@@ -21,6 +21,7 @@ from .db import Database
 from .logging_setup import setup_logging
 from .models import User
 from .pinterest.connection import ConnectionService
+from .pinterest.disabled import DisabledPinterestProvider
 from .pinterest.mock import MockPinterestProvider
 from .pinterest.provider import PinterestProvider
 from .pinterest.real import RealPinterestProvider
@@ -70,7 +71,9 @@ def create_app(settings: Settings | None = None, *, http: httpx.Client | None = 
     app.state.settings, app.state.db, app.state.registry = settings, db, registry
     app.state.http = http
     app.state.ai = ai or build_ai_provider(settings, http)
-    if pinterest_provider is None:
+    if not settings.direct_publishing_enabled:
+        pinterest_provider = DisabledPinterestProvider()  # MVP: nothing can reach Pinterest, whatever else is injected
+    elif pinterest_provider is None:
         pinterest_provider = (MockPinterestProvider() if settings.pinterest_provider == "mock"
                               else RealPinterestProvider(settings, http))
     app.state.pinterest = ConnectionService(pinterest_provider, settings)

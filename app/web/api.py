@@ -11,6 +11,7 @@ from .. import __version__
 from ..models import AffiliateProviderRow, Pin, Product
 from ..pinterest.errors import PinterestError
 from ..providers.base import ProviderError
+from ..services import drafts as draft_svc
 from ..services import pins as pin_svc
 from ..services import products as product_svc
 from ..services import publishing as pub_svc
@@ -272,6 +273,48 @@ def pinterest_status(request: Request, db: Session = Depends(deps.get_db)):
             "status": conn.status if conn else "disconnected", "username": conn.username if conn else None,
             "can_publish": st.pinterest.can_publish(conn), "default_board_id": conn.default_board_id if conn else None,
             "boards": [{"id": b.board_id, "name": b.name} for b in conn.boards] if conn else []}
+
+
+@router.get("/pins/{pid}/texts", dependencies=auth)
+def pin_texts(pid: int, db: Session = Depends(deps.get_db)):
+    """Exactly what to paste into Pinterest: title, description (with disclosure), affiliate URL, alt text."""
+    return draft_svc.final_texts(db, _pin(db, pid))
+
+
+class ManualPublishBody(BaseModel):
+    pinterest_url: str | None = None
+    board_name: str | None = Field(None, max_length=200)
+
+
+@router.post("/pins/{pid}/mark-published", dependencies=secure)
+def mark_published_manually(pid: int, body: ManualPublishBody | None = None, db: Session = Depends(deps.get_db)):
+    body = body or ManualPublishBody()
+    return _action(db, pid, lambda p: draft_svc.mark_published_manually(db, p, body.pinterest_url, body.board_name))
+
+
+@router.post("/pins/{pid}/move-to-draft", dependencies=secure)
+def move_to_draft(pid: int, db: Session = Depends(deps.get_db)):
+    return _action(db, pid, lambda p: draft_svc.move_back_to_draft(db, p))
+
+
+@router.post("/pins/{pid}/archive", dependencies=secure)
+def archive_pin(pid: int, db: Session = Depends(deps.get_db)):
+    return _action(db, pid, lambda p: draft_svc.archive(db, p))
+
+
+@router.post("/pins/{pid}/restore", dependencies=secure)
+def restore_pin(pid: int, db: Session = Depends(deps.get_db)):
+    return _action(db, pid, lambda p: draft_svc.restore(db, p))
+
+
+@router.delete("/pins/{pid}", dependencies=secure)
+def delete_pin(pid: int, request: Request, db: Session = Depends(deps.get_db)):
+    pin = _pin(db, pid)
+    try:
+        removed = draft_svc.delete(db, pin, request.app.state.settings)
+    except pin_svc.PinError as ex:
+        raise HTTPException(400, str(ex)) from ex
+    return {"deleted": pid, "image_files_removed": removed}
 
 
 @router.get("/templates", dependencies=auth)

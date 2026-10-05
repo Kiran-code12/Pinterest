@@ -24,7 +24,7 @@ def test_create_pins_lifecycle(app, db, prod):
     pins = make(app, db, prod, count=5)
     assert len(pins) == 5 and {p.template_key for p in pins} == {"minimal_card", "beauty_editorial", "collage", "top_picks", "spotlight"}
     for p in pins:
-        assert p.status == "ready_for_review"
+        assert p.status == "draft"
         assert p.destination_url == prod.primary_link.affiliate_url and p.affiliate_link_id == prod.primary_link.id
         assert p.current_asset and (p.current_asset.width, p.current_asset.height) == (1000, 1500)
         assert len(p.variations) == 1 and PN.check_destination(p) == []
@@ -58,7 +58,7 @@ def test_edit_resets_approval_and_keeps_history(app, db, prod):
     assert pin.status == "approved" and pin.approved_at
     warnings = PN.update_pin(db, pin, {"headline": "Totally new headline", "seo_description": "Guaranteed 100% glow"},
                              app.state.settings)
-    assert pin.status == "ready_for_review" and pin.approved_at is None and pin.headline == "Totally new headline"
+    assert pin.status == "draft" and pin.approved_at is None and pin.headline == "Totally new headline"
     assert warnings and len(pin.variations) == 2 and pin.variations[-1].source == "manual" and len(pin.assets) == 2
     assert pin.destination_url == prod.primary_link.affiliate_url  # destination is not editable
 

@@ -17,7 +17,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
 
-PIN_STATUSES = ("draft", "ready_for_review", "approved", "rejected", "scheduled", "publishing", "published", "failed")
+# MVP (manual workflow): draft -> published_manually, or archived at any time.
+# Direct publishing (disabled by default): draft -> approved -> scheduled -> publishing -> published | failed.
+PIN_STATUSES = ("draft", "published_manually", "archived", "approved", "rejected", "scheduled", "publishing",
+                "published", "failed")
 PRODUCT_STATUSES = ("discovered", "selected", "archived")
 
 
@@ -140,6 +143,7 @@ class Pin(Base):
     board_id: Mapped[str | None] = mapped_column(String(64))    # chosen Pinterest board (None = default board)
     board_name: Mapped[str | None] = mapped_column(String(200))
     status: Mapped[str] = mapped_column(String(20), default="draft", index=True)
+    status_before_archive: Mapped[str | None] = mapped_column(String(20))
     created_at: Mapped[datetime] = mapped_column(DateTime, default=utcnow)
     approved_at: Mapped[datetime | None] = mapped_column(DateTime)
 

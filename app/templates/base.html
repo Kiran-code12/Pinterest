@@ -8,7 +8,7 @@
 {% if logged_in %}
 <header class="top"><div class="in"><span class="brand">Affiliate Engine</span>
 <nav>{% set cur = request.url.path %}
-{% for href, label in [('/dashboard','Dashboard'),('/products','Products'),('/pins','Pins'),('/queue','Queue'),('/create','Create'),('/templates','Templates'),('/analytics','Analytics'),('/settings','Settings')] %}
+{% for href, label in [('/dashboard','Dashboard'),('/products','Products'),('/create','Create'),('/drafts','Draft Library'),('/templates','Templates'),('/analytics','Analytics')] + ([('/queue','Queue')] if direct_publishing else []) + [('/settings','Settings')] %}
 <a href="{{ href }}" class="{{ 'on' if cur.startswith(href) else '' }}">{{ label }}</a>{% endfor %}</nav>
 <span class="spacer"></span>
 <form method="post" action="/logout" class="inline">{{ csrf() }}<button class="sec" type="submit">Log out</button></form>

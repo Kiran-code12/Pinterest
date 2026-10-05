@@ -1,6 +1,6 @@
 {% extends "base.html" %}{% from "base.html" import csrf %}{% block title %}Analytics{% endblock %}
 {% block body %}<h1>Analytics</h1>
-<h2>Reported by Pinterest</h2><p class="small muted">Numbers returned by Pinterest's official analytics API (or typed in by you, marked "manual"). We do not estimate or invent them.</p>
+<h2>Reported by Pinterest</h2><p class="small muted">{% if direct_publishing %}Numbers returned by Pinterest's official analytics API, or typed in by you.{% else %}Direct publishing is off, so these are numbers you type in from your Pinterest analytics (marked "entered by you").{% endif %} We never estimate or invent them.</p>
 <div class="grid g4"><div class="card stat"><b>{{ reported.impressions }}</b><span>Impressions</span></div><div class="card stat"><b>{{ reported.saves }}</b><span>Saves</span></div>
 <div class="card stat"><b>{{ reported.pin_clicks }}</b><span>Pin clicks</span></div><div class="card stat"><b>{{ reported.outbound_clicks }}</b><span>Outbound clicks</span></div></div>
 <h2>Calculated by this app</h2><p class="small muted">Derived from our own records and the numbers above.</p>
@@ -11,7 +11,7 @@
 <div class="card stat"><b>{{ calc.save_rate if calc.save_rate is not none else '-' }}{{ '%' if calc.save_rate is not none }}</b><span>Saves ÷ impressions</span></div></div>
 <div class="card"><h2>What to try next</h2><ul>{% for i in insights %}<li>{{ i }}</li>{% endfor %}</ul></div>
 <table><tr><th>Pin</th><th>Pinterest pin ID</th><th>Provider</th><th>Data from</th><th>Impr.</th><th>Saves</th><th>Pin clicks</th><th>Outbound</th></tr>
-{% for pp, rec in rows %}<tr><td><a href="/pins/{{ pp.pin_id }}">#{{ pp.pin_id }}</a></td><td class="mono">{{ pp.pinterest_pin_id or '-' }}</td><td>{{ pp.provider }}{{ ' (simulated)' if pp.simulated }}</td>
+{% for pp, rec in rows %}<tr><td><a href="/drafts/{{ pp.pin_id }}">#{{ pp.pin_id }}</a></td><td class="mono">{{ pp.pinterest_pin_id or '-' }}</td><td>{{ pp.provider }}{{ ' (simulated)' if pp.simulated }}</td>
 <td>{{ ('Pinterest' if rec.source == 'pinterest' else 'entered by you') if rec else '-' }}</td>
 <td>{{ rec.impressions if rec else '-' }}</td><td>{{ rec.saves if rec else '-' }}</td><td>{{ rec.pin_clicks if rec else '-' }}</td><td>{{ rec.outbound_clicks if rec else '-' }}</td></tr>
 {% else %}<tr><td colspan="8" class="muted">No published pins yet.</td></tr>{% endfor %}</table>
@@ -20,5 +20,5 @@
 <div class="row"><div><label>Impressions</label><input type="number" name="impressions" min="0" value="0"></div><div><label>Saves</label><input type="number" name="saves" min="0" value="0"></div>
 <div><label>Pin clicks</label><input type="number" name="pin_clicks" min="0" value="0"></div><div><label>Outbound clicks</label><input type="number" name="outbound_clicks" min="0" value="0"></div></div>
 <p><button type="submit">Save</button></p></form>
-<form class="card" method="post" action="/analytics/sync">{{ csrf() }}<h2>Sync from Pinterest</h2><p class="small muted">Fetches metrics for pins published through the API from the official analytics endpoint.</p><button class="sec" type="submit">Sync now</button></form></div>
+{% if direct_publishing %}<form class="card" method="post" action="/analytics/sync">{{ csrf() }}<h2>Sync from Pinterest</h2><p class="small muted">Fetches metrics for pins published through the API from the official analytics endpoint.</p><button class="sec" type="submit">Sync now</button></form>{% endif %}</div>
 {% endblock %}

@@ -101,6 +101,9 @@ class Settings:
     amazon_token_url: str = ""
     # EarnKaro (no public API found: import/manual links only)
     earnkaro_link_domains: tuple[str, ...] = ("ekaro.in", "earnkaro.com")
+    # Direct publishing to Pinterest is OFF for the MVP: the app prepares drafts that you post by hand.
+    # The whole integration below stays in the codebase (isolated) and is enabled with DIRECT_PUBLISHING_ENABLED=true.
+    direct_publishing_enabled: bool = False
     # Pinterest (official API v5, OAuth 2.0). Tokens are NOT configured here: they are obtained by "Connect".
     pinterest_provider: str = "real"  # real | mock (mock = simulation, nothing is sent to Pinterest)
     pinterest_client_id: str = ""
@@ -169,6 +172,7 @@ def build_settings(environ: dict[str, str] | None = None) -> Settings:
         amazon_api_base=e.get("AMAZON_API_BASE", "https://creatorsapi.amazon").rstrip("/"),
         amazon_token_url=e.get("AMAZON_TOKEN_URL", ""),
         earnkaro_link_domains=_list(e.get("EARNKARO_LINK_DOMAINS"), "ekaro.in,earnkaro.com"),
+        direct_publishing_enabled=_bool(e.get("DIRECT_PUBLISHING_ENABLED"), False),
         pinterest_provider="mock" if e.get("PINTEREST_PROVIDER", "real").lower() == "mock" else "real",
         pinterest_client_id=e.get("PINTEREST_CLIENT_ID", ""),
         pinterest_client_secret=e.get("PINTEREST_CLIENT_SECRET", ""),

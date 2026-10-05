@@ -60,3 +60,9 @@ class RateLimited(PinterestError):
 class ServiceUnavailable(PinterestError):
     code, retryable = "unavailable", True
     default_message = "Pinterest is temporarily unavailable. Try again later."
+
+
+class DirectPublishingDisabled(PinterestError):
+    code = "disabled"
+    default_message = ("Direct publishing to Pinterest is turned off (manual workflow). Save drafts, then post them "
+                       "yourself. To enable the integration later set DIRECT_PUBLISHING_ENABLED=true.")

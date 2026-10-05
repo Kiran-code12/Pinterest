@@ -55,7 +55,7 @@ def test_login_is_rate_limited(tmp_path):
 
 
 def test_errors_are_safe(web):
-    r = web.get("/pins/99999")
+    r = web.get("/drafts/99999")
     assert r.status_code == 404 and "Traceback" not in r.text
     assert web.get("/nope").status_code == 404
     assert web.get("/assets/pin/99999").status_code == 404
@@ -96,23 +96,23 @@ def test_full_workflow_discover_to_published(web, app, db):
     assert r.status_code == 303
     db.expire_all()
     pins = db.query(Pin).order_by(Pin.id).all()
-    assert len(pins) == 3 and all(p.status == "ready_for_review" for p in pins)
+    assert len(pins) == 3 and all(p.status == "draft" for p in pins)
     p0 = pins[0]
     img = web.get(f"/assets/pin/{p0.id}")
     assert img.status_code == 200 and img.headers["content-type"] == "image/png" and img.content[:4] == b"\x89PNG"
-    page = web.get(f"/pins/{p0.id}").text
+    page = web.get(f"/drafts/{p0.id}").text
     assert "Approve" in page and "Regenerate" in page and "Edit" in page
 
     # 3. publishing before approval / before connecting is blocked
     web.post(f"/pins/{p0.id}/publish")
     db.expire_all()
-    assert db.get(Pin, p0.id).status == "ready_for_review"
+    assert db.get(Pin, p0.id).status == "draft"
 
     # 4. approve
     web.post(f"/pins/{p0.id}/approve")
     db.expire_all()
     assert db.get(Pin, p0.id).status == "approved"
-    page = web.get(f"/pins/{p0.id}").text
+    page = web.get(f"/drafts/{p0.id}").text
     assert "Pinterest is not connected" in page  # clear instruction instead of a fake success
 
     # 5. connect Pinterest (mock OAuth): button -> authorization page -> callback
@@ -134,14 +134,14 @@ def test_full_workflow_discover_to_published(web, app, db):
     assert "Default board: <b>Beauty Finds</b>" in web.get("/settings").text.replace("\n", " ") or "Beauty Finds" in web.get("/settings").text
 
     # 7. choose a board for this pin and PUBLISH
-    page = web.get(f"/pins/{p0.id}").text
+    page = web.get(f"/drafts/{p0.id}").text
     assert 'name="board_id"' in page and "Publish" in page and "Makeup" in page
     r = web.post(f"/pins/{p0.id}/publish", {"board_id": "b-makeup"})
     flash = web.follow(r)
     assert "SIMULATED publish" in flash.text and "Pinterest pin ID:" in flash.text
     db.expire_all()
     assert db.get(Pin, p0.id).status == "published"
-    result = web.get(f"/pins/{p0.id}").text
+    result = web.get(f"/drafts/{p0.id}").text
     assert "Published (simulated)" in result and "Pinterest Pin ID" in result and "Makeup" in result
     assert ">View Pin</a>" not in result and "pinterest.com/pin/" not in result  # no URL from the API: none invented
     mock = app.state.pinterest.provider
@@ -193,7 +193,7 @@ def test_failed_publish_shows_reason_and_retry(web, app, db):
     assert "Publishing failed" in page.text and "rate limit" in page.text.lower()
     db.expire_all()
     assert db.get(Pin, pin.id).status == "failed"
-    detail = web.get(f"/pins/{pin.id}").text
+    detail = web.get(f"/drafts/{pin.id}").text
     assert "Reason:" in detail and "Retry publish" in detail
     assert "Retry" in web.get("/queue").text
     web.post(f"/pins/{pin.id}/publish")
@@ -255,7 +255,7 @@ def test_api_workflow_with_duplicate_409(web, app, db):
     gen = web.api_post("/api/pins/generate", {"product_id": pid, "count": 2})
     assert gen.status_code == 200
     a, b = gen.json()
-    assert a["status"] == "ready_for_review" and a["destination_url"].startswith("https://example.com/demo-affiliate/")
+    assert a["status"] == "draft" and a["destination_url"].startswith("https://example.com/demo-affiliate/")
     assert web.api_post(f"/api/pins/{a['id']}/publish").status_code == 400  # not approved
     assert web.api_post(f"/api/pins/{a['id']}/approve").json()["status"] == "approved"
     status = web.get("/api/pinterest/status").json()

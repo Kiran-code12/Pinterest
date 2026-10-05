@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from ..config import Settings
 from ..models import PinterestBoard, PinterestConnection
 from .crypto import TokenCrypto, TokenDecryptError
-from .errors import AuthExpired, NotConnected, PermissionDenied, PinterestError
+from .errors import AuthExpired, DirectPublishingDisabled, NotConnected, PermissionDenied, PinterestError
 from .provider import PinterestProvider
 from .types import Board, TokenSet
 
@@ -33,7 +33,17 @@ class ConnectionService:
         self.crypto = TokenCrypto(settings.secret_key)
 
     # ---- state --------------------------------------------------------------------------------------
+    @property
+    def enabled(self) -> bool:
+        return self.settings.direct_publishing_enabled
+
+    def _require_enabled(self) -> None:
+        if not self.enabled:
+            raise DirectPublishingDisabled()
+
     def get(self, db: Session) -> PinterestConnection | None:
+        if not self.enabled:  # a connection stored earlier is ignored (and untouched) while the feature is off
+            return None
         return db.scalar(select(PinterestConnection).order_by(PinterestConnection.id.desc()))
 
     def is_connected(self, db: Session) -> bool:
@@ -47,11 +57,13 @@ class ConnectionService:
 
     # ---- connect (OAuth authorization-code flow) -----------------------------------------------------
     def begin(self, session: dict) -> str:
+        self._require_enabled()
         state = secrets.token_urlsafe(32)
         session["pinterest_state"] = state
         return self.provider.authorization_url(state)
 
     def complete(self, db: Session, session: dict, code: str, state: str) -> PinterestConnection:
+        self._require_enabled()
         expected = session.pop("pinterest_state", None)
         if not expected or not state or not hmac.compare_digest(expected, state):
             raise PinterestError("The authorization response did not match this session (possible forged "
@@ -108,6 +120,7 @@ class ConnectionService:
         db.commit()
 
     def access_token(self, db: Session) -> str:
+        self._require_enabled()
         conn = self.get(db)
         if conn is None:
             raise NotConnected()
@@ -159,6 +172,7 @@ class ConnectionService:
             conn.default_board_name = next((b.name for b in boards if b.id == conn.default_board_id), None)
 
     def refresh_boards(self, db: Session) -> list[PinterestBoard]:
+        self._require_enabled()
         conn = self.get(db)
         if conn is None:
             raise NotConnected()
@@ -169,6 +183,7 @@ class ConnectionService:
         return list(conn.boards)
 
     def set_default_board(self, db: Session, board_id: str) -> PinterestBoard:
+        self._require_enabled()
         conn = self.get(db)
         if conn is None:
             raise NotConnected()

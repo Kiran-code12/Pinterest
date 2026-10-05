@@ -30,6 +30,9 @@ def record_metrics(db: Session, published: PublishedPin, *, impressions=0, saves
 
 def sync_from_pinterest(db: Session, conn_svc: ConnectionService) -> dict:
     out = {"synced": 0, "errors": []}
+    if not conn_svc.enabled:
+        out["errors"].append("Pinterest analytics sync is off while direct publishing is disabled. Enter metrics by hand.")
+        return out
     if not conn_svc.is_connected(db):
         out["errors"].append("Pinterest is not connected (or authorization expired). Reconnect in Settings.")
         return out
