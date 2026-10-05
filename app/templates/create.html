@@ -1,0 +1,15 @@
+{% extends "base.html" %}{% from "base.html" import csrf %}{% block title %}Create pins{% endblock %}
+{% block body %}<h1>Create pins</h1>
+<form method="post" action="/create" class="card">{{ csrf() }}
+<p class="muted">Copy is written by the <b>{{ ai_name }}</b> provider using only the product's verified facts, then checked for invented prices, numbers and claims. Nothing is published without your approval.</p>
+<label for="pr">1. Product</label><select id="pr" name="product_id" required>
+{% for p in products %}{% set l = p.primary_link %}<option value="{{ p.id }}" {{ 'selected' if p.id==selected_id }} {{ 'disabled' if not l or not l.is_valid }}>
+{{ '★ ' if p.status=='selected' }}{{ p.title[:70] }} ({{ p.provider.name }}){{ ' - NO VALID AFFILIATE LINK' if not l or not l.is_valid }}</option>{% endfor %}</select>
+<div class="row"><div><label for="n">2. Pin variations</label><input id="n" name="count" type="number" min="1" max="10" value="3"></div></div>
+<label>3. Designs (variations cycle through the ticked templates)</label>
+{% for t in templates_list %}<label class="check"><input type="checkbox" name="template_keys" value="{{ t.key }}" checked> <b>{{ t.name }}</b> <span class="muted small">{{ t.description }}</span></label>{% endfor %}
+<label for="ex">Extra products for collage / top-picks designs (optional, hold Ctrl/Cmd for several)</label>
+<select id="ex" name="extra_product_ids" multiple size="5">{% for p in products if p.status=='selected' %}<option value="{{ p.id }}">{{ p.title[:70] }}</option>{% endfor %}</select>
+<label class="check"><input type="checkbox" name="show_disclosure" value="1" checked> Show "Affiliate link" disclosure on the image and in the description</label>
+<label class="check"><input type="checkbox" name="show_price" value="1"> Show price on the image (only when known; Amazon prices only while fresh)</label>
+<p><button type="submit">4. Generate copy + designs</button></p></form>{% endblock %}

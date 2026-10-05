@@ -1,0 +1,20 @@
+{% macro csrf() %}<input type="hidden" name="csrf_token" value="{{ csrf_token }}">{% endmacro %}
+{% macro badge(s) %}<span class="badge {{ s }}">{{ s|replace('_',' ') }}</span>{% endmacro %}
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}Dashboard{% endblock %} · Affiliate Engine</title>
+<link rel="stylesheet" href="/static/style.css"></head>
+<body>
+{% if logged_in %}
+<header class="top"><div class="in"><span class="brand">Affiliate Engine</span>
+<nav>{% set cur = request.url.path %}
+{% for href, label in [('/dashboard','Dashboard'),('/products','Products'),('/pins','Pins'),('/queue','Queue'),('/create','Create'),('/templates','Templates'),('/analytics','Analytics'),('/settings','Settings')] %}
+<a href="{{ href }}" class="{{ 'on' if cur.startswith(href) else '' }}">{{ label }}</a>{% endfor %}</nav>
+<span class="spacer"></span>
+<form method="post" action="/logout" class="inline">{{ csrf() }}<button class="sec" type="submit">Log out</button></form>
+</div></header>{% endif %}
+<main>
+{% if simulation and logged_in %}<div class="flash error"><b>SIMULATION MODE:</b> the mock Pinterest provider is active. Nothing is sent to Pinterest and nothing published here is real.</div>{% endif %}
+{% for kind, msg in flash_messages %}<div class="flash {{ kind }}">{{ msg }}</div>{% endfor %}
+{% block body %}{% endblock %}
+</main><script src="/static/app.js"></script></body></html>

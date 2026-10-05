@@ -1,0 +1,34 @@
+{% extends "base.html" %}{% from "base.html" import csrf %}{% block title %}Settings{% endblock %}
+{% block body %}<h1>Settings</h1>
+<p class="muted">Credentials come from environment variables / <span class="mono">.env</span>. They are never stored in the database, never shown here and never logged. Pinterest OAuth tokens are stored encrypted.</p>
+<div class="card"><h2>Pinterest</h2>
+{% if conn and conn.status == 'connected' %}
+<p><span class="badge approved">● Connected</span> &nbsp; Account: <b>@{{ conn.username }}</b>{% if conn.account_type %} ({{ conn.account_type|lower }}){% endif %}{% if pin_provider.simulated %} <span class="badge demo">simulated</span>{% endif %}</p>
+<p>Publishing capability: {% if can_publish %}<span class="badge approved">can create pins</span>{% else %}<span class="badge failed">missing permission (pins:write / boards:read): reconnect</span>{% endif %}
+<span class="small muted">Permissions granted: {{ (conn.scopes or [])|join(', ') }}</span></p>
+{% elif conn %}<p><span class="badge failed">● Authorization expired or revoked</span> {{ conn.last_error or '' }}</p><p>Please reconnect Pinterest.</p>
+{% else %}<p><span class="badge">● Not connected</span></p>{% endif %}
+{% if not conn or conn.status != 'connected' %}
+{% if not pin_configured %}<div class="flash warn">Set <span class="mono">PINTEREST_CLIENT_ID</span>, <span class="mono">PINTEREST_CLIENT_SECRET</span> and <span class="mono">PINTEREST_REDIRECT_URI</span> in <span class="mono">.env</span>, then restart. See docs/PINTEREST_SETUP.md.</div>{% endif %}
+<form method="post" action="/pinterest/connect">{{ csrf() }}<button type="submit" {{ 'disabled' if not pin_configured }}>{{ 'Reconnect Pinterest' if conn else 'Connect Pinterest' }}</button></form>
+{% else %}
+<h3>Boards</h3>
+<form method="post" action="/pinterest/default-board" class="row"><div><label>Default board</label>
+<select name="board_id">{% for b in boards %}<option value="{{ b.board_id }}" {{ 'selected' if b.board_id == conn.default_board_id }}>{{ b.name }}</option>{% endfor %}</select></div>{{ csrf() }}<div><button type="submit">Save default board</button></div></form>
+<p class="small muted">Default board: <b>{{ conn.default_board_name or 'not set' }}</b> · {{ boards|length }} boards</p>
+<table><tr><th>Board</th><th>ID</th><th>Privacy</th></tr>{% for b in boards %}<tr><td>{{ b.name }}</td><td class="mono">{{ b.board_id }}</td><td>{{ b.privacy or '-' }}</td></tr>{% else %}<tr><td colspan="3" class="muted">No boards found. Create one on Pinterest, then refresh.</td></tr>{% endfor %}</table>
+<div class="actions"><form method="post" action="/pinterest/refresh-boards" class="inline">{{ csrf() }}<button class="sec" type="submit">Refresh boards</button></form>
+<form method="post" action="/pinterest/disconnect" class="inline" data-confirm="Disconnect Pinterest? Stored tokens are deleted.">{{ csrf() }}<button class="danger" type="submit">Disconnect Pinterest</button></form></div>
+{% endif %}
+{% if conn and conn.status != 'connected' %}<form method="post" action="/pinterest/disconnect" class="inline">{{ csrf() }}<button class="sec" type="submit">Remove stored connection</button></form>{% endif %}
+<p class="small muted">Provider: {{ pin_provider.name }} · Scheduler: {{ 'ON' if s.scheduler_enabled else 'OFF (manual publish only)' }} · Daily limit for the scheduler: {{ s.max_pins_per_day }} ({{ s.schedule_slots|join(', ') }} {{ s.schedule_tz }})</p></div>
+<div class="grid g2">
+<form class="card" method="post" action="/settings/disclosure">{{ csrf() }}<h2>Affiliate disclosure</h2>
+<label>Text added to the pin description (when the pin's disclosure option is ticked)</label><textarea name="disclosure_text" maxlength="160">{{ disclosure_text }}</textarea>
+<label>Short label printed on the pin image</label><input type="text" name="image_label" value="{{ image_label }}" maxlength="30">
+<p class="small muted">You decide the wording. Disclosure rules differ by country and platform; this tool does not guarantee that any text is legally sufficient. Check the rules that apply to you.</p><button type="submit">Save</button></form>
+<div class="card"><h2>Affiliate providers</h2><table><tr><th>Provider</th><th>Configured</th><th>Capabilities</th></tr>
+{% for p in providers %}<tr><td>{{ p.name }}</td><td>{{ 'yes' if p.configured else 'no' }}</td><td class="small">{{ p.capabilities|join(', ') }}</td></tr>{% endfor %}</table>
+<p class="small muted">EarnKaro: no public API found, so import/manual only. Amazon: Creators API (needs credentials) or CSV import.</p>
+<h2>AI</h2><p>Active: <b>{{ ai_name }}</b> (AI_PROVIDER={{ ai_setting }}). 'local' is free and deterministic.</p></div></div>
+<div class="card"><h2>Credential checklist (values are never shown)</h2><table>{% for name, ok in env_checks %}<tr><td class="mono">{{ name }}</td><td>{{ 'set' if ok else 'not set' }}</td></tr>{% endfor %}</table></div>{% endblock %}

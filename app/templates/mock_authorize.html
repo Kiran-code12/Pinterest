@@ -1,0 +1,5 @@
+{% extends "base.html" %}{% from "base.html" import csrf %}{% block title %}Mock authorization{% endblock %}
+{% block body %}<div class="card login"><h1>Mock Pinterest</h1>
+<p><b>Simulation:</b> this stands in for Pinterest's authorization page so the connect flow can be tried without real credentials. Nothing leaves this computer.</p>
+<form method="post" action="/pinterest/mock-authorize">{{ csrf() }}<input type="hidden" name="state" value="{{ state }}">
+<p><button type="submit" name="decision" value="approve">Authorize (simulated)</button> <button class="sec" type="submit" name="decision" value="deny">Cancel</button></p></form></div>{% endblock %}

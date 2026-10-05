@@ -1,0 +1,7 @@
+line-length = 130
+target-version = "py311"
+extend-exclude = ["pinbot", "tests"]
+
+[lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["B008", "UP017", "UP035", "E501"]

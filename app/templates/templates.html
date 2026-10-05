@@ -1,0 +1,3 @@
+{% extends "base.html" %}{% block title %}Templates{% endblock %}
+{% block body %}<h1>Pin templates</h1><p class="muted">1000×1500 (2:3) vertical designs rendered locally. Add more in <span class="mono">app/services/templates.py</span> with <span class="mono">@register(...)</span>.</p>
+<div class="pins">{% for t in rows %}<div class="pin"><img src="/templates/{{ t.key }}/sample.png" alt="{{ t.name }} sample"><div class="b"><b>{{ t.name }}</b><span class="small muted">{{ t.description }}</span></div></div>{% endfor %}</div>{% endblock %}

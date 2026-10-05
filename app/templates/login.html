@@ -1,0 +1,6 @@
+{% extends "base.html" %}{% from "base.html" import csrf %}{% block title %}Log in{% endblock %}
+{% block body %}<div class="card login"><h1>AI Pinterest Affiliate Engine</h1>
+<form method="post" action="/login">{{ csrf() }}
+<label for="u">Username</label><input id="u" name="username" type="text" autocomplete="username" required autofocus>
+<label for="p">Password</label><input id="p" name="password" type="password" autocomplete="current-password" required>
+<p><button type="submit">Log in</button></p></form></div>{% endblock %}

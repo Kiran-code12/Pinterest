@@ -1,0 +1,54 @@
+{% extends "base.html" %}{% from "base.html" import csrf, badge %}{% block title %}Products{% endblock %}
+{% block body %}<h1>Products</h1>
+<div class="grid g2">
+<div class="card"><h2>Discover products</h2>
+<form method="post" action="/products/discover">{{ csrf() }}
+<label for="rt">What are you looking for?</label>
+<input id="rt" name="request_text" type="text" placeholder="Find 20 beauty products suitable for Pinterest" maxlength="300">
+<div class="row"><div><label for="cat">Category</label><select id="cat" name="category"><option value="">Any</option>
+{% for c in categories %}<option>{{ c }}</option>{% endfor %}</select></div>
+<div><label for="lim">How many</label><input id="lim" name="limit" type="number" value="20" min="1" max="100"></div></div>
+<label>Sources</label>
+{% for pr in providers %}<label class="check"><input type="checkbox" name="providers" value="{{ pr.key }}" {{ 'checked' if 'search' in pr.capabilities else 'disabled' }}>
+{{ pr.name }} {% if 'search' not in pr.capabilities %}<span class="small muted">(no official search: use import)</span>{% endif %}
+{% if pr.is_demo %}<span class="badge demo">demo</span>{% endif %}</label>{% endfor %}
+<p><button type="submit">Discover</button></p></form>
+<p class="small muted">{{ score_label }}</p></div>
+<div class="card"><h2>Import (CSV)</h2>
+<form method="post" action="/products/import" enctype="multipart/form-data">{{ csrf() }}
+<label for="ip">Provider</label><select id="ip" name="provider">{% for k in importable %}<option value="{{ k }}">{{ k|capitalize }}</option>{% endfor %}</select>
+<label for="if">CSV file (max 1MB, 500 rows)</label><input id="if" type="file" name="file" accept=".csv,text/csv" required>
+<p><button type="submit">Import</button> <a class="small" href="/products/sample.csv?provider=earnkaro">EarnKaro sample CSV</a> · <a class="small" href="/products/sample.csv?provider=amazon">Amazon sample CSV</a></p></form>
+<details><summary class="small">Add one product by hand</summary>
+<form method="post" action="/products/add">{{ csrf() }}
+<div class="row"><div><label>Provider</label><select name="provider">{% for k in importable %}<option value="{{ k }}">{{ k|capitalize }}</option>{% endfor %}</select></div>
+<div><label>ASIN (Amazon only)</label><input type="text" name="asin" maxlength="10"></div></div>
+<label>Title</label><input type="text" name="title" maxlength="500">
+<div class="row"><div><label>Brand</label><input type="text" name="brand"></div><div><label>Category</label><input type="text" name="category"></div><div><label>Price (₹)</label><input type="text" name="price"></div></div>
+<label>Description (facts only)</label><textarea name="description"></textarea>
+<label>Image URL</label><input type="url" name="image_url"><label>Product URL</label><input type="url" name="product_url">
+<label>Affiliate link (EarnKaro Profit Link / Amazon tagged link)</label><input type="url" name="affiliate_url">
+<p><button type="submit">Save product</button></p></form></details></div></div>
+<form method="get" class="card row">
+<div><label>Search</label><input type="search" name="q" value="{{ q }}"></div>
+<div><label>Source</label><select name="provider"><option value="">All</option>{% for pr in providers %}<option value="{{ pr.key }}" {{ 'selected' if provider_filter==pr.key }}>{{ pr.name }}</option>{% endfor %}</select></div>
+<div><label>Category</label><select name="category"><option value="">All</option>{% for c in categories %}<option {{ 'selected' if category_filter==c }}>{{ c }}</option>{% endfor %}</select></div>
+<div><label>Status</label><select name="status"><option value="">Active</option>{% for s in ['discovered','selected','archived'] %}<option {{ 'selected' if status_filter==s }}>{{ s }}</option>{% endfor %}</select></div>
+<div><button type="submit">Filter</button></div></form>
+<p class="muted">{{ total }} products</p>
+<table><tr><th></th><th>Product</th><th>Source</th><th>Score</th><th>Affiliate link</th><th>Status</th><th></th></tr>
+{% for p in products %}<tr>
+<td>{% if p.local_image_path %}<img class="th" src="/assets/product/{{ p.id }}" alt="">{% endif %}</td>
+<td><a href="/products/{{ p.id }}">{{ p.title[:80] }}</a><br><span class="small muted">{{ p.brand or '' }} · {{ p.category or '' }}</span></td>
+<td>{{ p.provider.name }}{% if p.provider.is_demo %} <span class="badge demo">demo</span>{% endif %}</td>
+<td style="min-width:90px">{{ p.score|round(0)|int }}<div class="bar"><i style="width:{{ p.score }}%"></i></div></td>
+<td>{% set l = p.primary_link %}{% if not l %}<span class="badge failed">missing</span>{% elif l.is_valid %}<span class="badge approved">ok</span>{% else %}<span class="badge failed">invalid</span>{% endif %}</td>
+<td>{{ badge(p.status) }}</td>
+<td><form method="post" action="/products/{{ p.id }}/status" class="inline">{{ csrf() }}
+{% if p.status != 'selected' %}<input type="hidden" name="status" value="selected"><button class="sec" type="submit">Select</button>
+{% else %}<input type="hidden" name="status" value="discovered"><button class="sec" type="submit">Unselect</button>{% endif %}</form></td></tr>
+{% else %}<tr><td colspan="7" class="muted">No products yet. Use "Discover" (demo catalog works offline) or import a CSV.</td></tr>{% endfor %}</table>
+<div class="pager">{% if page > 1 %}<a class="btn sec" href="?page={{ page-1 }}&q={{ q }}&provider={{ provider_filter }}&category={{ category_filter }}&status={{ status_filter }}">Previous</a>{% endif %}
+<span class="muted">Page {{ page }} / {{ pages }}</span>
+{% if page < pages %}<a class="btn sec" href="?page={{ page+1 }}&q={{ q }}&provider={{ provider_filter }}&category={{ category_filter }}&status={{ status_filter }}">Next</a>{% endif %}</div>
+{% endblock %}

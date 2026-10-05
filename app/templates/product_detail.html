@@ -1,0 +1,24 @@
+{% extends "base.html" %}{% from "base.html" import csrf, badge %}{% block title %}{{ p.title[:40] }}{% endblock %}
+{% block body %}<h1>{{ p.title }}</h1>
+<div class="split"><div>{% if p.local_image_path %}<img class="preview" src="/assets/product/{{ p.id }}" alt="">{% else %}<div class="card muted">No image available</div>{% endif %}
+<div class="actions"><a class="btn" href="/create?product_id={{ p.id }}">Create pins</a>
+<form method="post" action="/products/{{ p.id }}/status" class="inline">{{ csrf() }}<input type="hidden" name="status" value="{{ 'discovered' if p.status=='selected' else 'selected' }}"><button class="sec" type="submit">{{ 'Unselect' if p.status=='selected' else 'Select' }}</button></form>
+<form method="post" action="/products/{{ p.id }}/status" class="inline" data-confirm="Archive this product?">{{ csrf() }}<input type="hidden" name="status" value="archived"><button class="sec" type="submit">Archive</button></form></div></div>
+<div><div class="card"><p>{{ badge(p.status) }} {% if p.provider.is_demo %}<span class="badge demo">demo</span>{% endif %}</p>
+<p><b>Source:</b> {{ p.provider.name }} · <b>ID:</b> <span class="mono">{{ p.external_id }}</span></p>
+<p><b>Brand:</b> {{ p.brand or '-' }} · <b>Category:</b> {{ p.category or '-' }} · <b>Availability:</b> {{ p.availability or '-' }}</p>
+<p><b>Price:</b> {{ price_shown or (p.price_value|string ~ ' (stale or hidden)' if p.price_value else '-') }}</p>
+<p>{{ p.description or '' }}</p></div>
+<div class="card"><h2>Affiliate destination</h2>
+{% set l = p.primary_link %}{% if l %}
+<p><b>Provider:</b> {{ l.provider.name }} · <b>Kind:</b> {{ l.link_kind }} · {% if l.is_valid %}<span class="badge approved">valid</span>{% else %}<span class="badge failed">invalid</span> {{ l.validation_message }}{% endif %}</p>
+<p><b>Original product URL</b><br><span class="mono">{{ l.original_url or '-' }}</span></p>
+<p><b>Affiliate URL</b><br><span class="mono">{{ l.affiliate_url }}</span></p>
+{% else %}<p class="flash error">No affiliate link. Pins cannot be created until you add one.</p>{% endif %}
+<form method="post" action="/products/{{ p.id }}/link">{{ csrf() }}<label>Set / replace affiliate link (validated for {{ p.provider.name }})</label>
+<input type="url" name="affiliate_url" required><p><button class="sec" type="submit">Save link</button></p></form></div>
+<div class="card"><h2>Content-opportunity score: {{ p.score|round(0)|int }} / 100</h2><p class="small muted">{{ score_label }}</p>
+<table>{% for k, v in (p.score_breakdown or {}).items() %}<tr><td>{{ k|replace('_',' ') }}</td><td>{{ v }}</td></tr>{% endfor %}</table></div></div></div>
+<h2>Pins for this product</h2><div class="pins">{% for pin in pins %}<a class="pin" href="/pins/{{ pin.id }}" style="text-decoration:none;color:inherit">
+{% if pin.current_asset %}<img src="/assets/pin/{{ pin.id }}" alt="">{% endif %}<div class="b"><b>{{ pin.headline }}</b>{{ badge(pin.status) }}</div></a>
+{% else %}<p class="muted">None yet.</p>{% endfor %}</div>{% endblock %}

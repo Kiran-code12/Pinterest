@@ -1,0 +1,14 @@
+{% extends "base.html" %}{% from "base.html" import csrf, badge %}{% block title %}Queue{% endblock %}
+{% block body %}<h1>Publishing queue</h1>
+<div class="card"><p>Scheduler: <b>{{ 'ON' if scheduler_on else 'OFF' }}</b>. {% if not scheduler_on %}Scheduled pins are <u>not</u> published automatically. Publish by hand from each pin, press "Run due pins now", or set <span class="mono">SCHEDULER_ENABLED=true</span> and run <span class="mono">python -m app.worker</span>.{% endif %}</p>
+<div class="actions"><form method="post" action="/queue/process" class="inline">{{ csrf() }}<button class="sec" type="submit">Run due pins now</button></form>
+<form method="post" action="/pins/schedule-approved" class="inline">{{ csrf() }}<button type="submit">Schedule all approved pins</button></form></div></div>
+<table><tr><th>Pin</th><th>Product</th><th>Status</th><th>When</th><th>Attempts</th><th>Details</th><th></th></tr>
+{% for it in items %}<tr><td><a href="/pins/{{ it.pin_id }}">#{{ it.pin_id }}</a></td><td>{{ it.pin.product.title[:50] }}</td><td>{{ badge(it.pin.status) }}</td>
+<td>{{ local_dt(it.scheduled_for) if it.scheduled_for else '-' }}</td><td>{{ it.attempts }}</td>
+<td class="small">{% if it.status == 'failed' %}<b style="color:var(--err)">Reason:</b> {{ it.last_error }}{% if it.ambiguous %}<br>The result of this attempt is unknown: check your board before retrying.{% endif %}{% else %}{{ it.status }}{% endif %}</td>
+<td>{% if it.pin.status == 'failed' %}<form method="post" action="/pins/{{ it.pin_id }}/publish" class="inline">{{ csrf() }}<button class="sec" type="submit">Retry</button></form>
+{% elif it.pin.status in ['approved','scheduled'] %}<form method="post" action="/pins/{{ it.pin_id }}/publish" class="inline" data-confirm="Publish this pin to Pinterest now?">{{ csrf() }}<button type="submit">Publish now</button></form>{% endif %}</td></tr>
+{% else %}<tr><td colspan="7" class="muted">The queue is empty.</td></tr>{% endfor %}</table>
+<h2>Waiting for review / approval</h2>
+<table>{% for p in ready %}<tr><td><a href="/pins/{{ p.id }}">Pin #{{ p.id }}</a></td><td>{{ p.headline[:70] }}</td><td>{{ badge(p.status) }}</td></tr>{% else %}<tr><td class="muted">Nothing waiting.</td></tr>{% endfor %}</table>{% endblock %}

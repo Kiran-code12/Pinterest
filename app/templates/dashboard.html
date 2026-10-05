@@ -1,0 +1,25 @@
+{% extends "base.html" %}{% from "base.html" import csrf, badge %}{% block title %}Dashboard{% endblock %}
+{% block body %}<h1>Dashboard</h1>
+{% for n in notices %}<div class="flash info">{{ n }}</div>{% endfor %}
+<div class="card">{% if conn and conn.status == 'connected' %}<span class="badge approved">● Pinterest connected</span> @{{ conn.username }}{% if conn.default_board_name %} · default board: {{ conn.default_board_name }}{% endif %}
+{% elif conn %}<span class="badge failed">● Pinterest authorization expired</span> <a href="/settings">Reconnect Pinterest</a>
+{% else %}<span class="badge">● Pinterest not connected</span> <a href="/settings">Connect Pinterest</a> to publish approved pins directly.{% endif %}</div>
+<div class="grid g4">
+{% for label, key in [('Products found','products_found'),('Products selected','products_selected'),('Pins generated','pins_generated'),('Ready for review','pins_pending'),('Approved','pins_approved'),('Scheduled','pins_scheduled'),('Published','pins_published'),('Failed','pins_failed')] %}
+<div class="card stat"><b>{{ stats[key] }}</b><span>{{ label }}</span></div>{% endfor %}
+</div>
+<div class="grid g2">
+<div class="card"><h2>Pinterest-reported performance</h2>
+{% if perf.pins_with_data %}<p>Impressions <b>{{ perf.impressions }}</b> · Saves <b>{{ perf.saves }}</b> · Pin clicks <b>{{ perf.pin_clicks }}</b> · Outbound clicks <b>{{ perf.outbound_clicks }}</b></p>
+{% else %}<p class="muted">No analytics yet. Publish pins, then record or sync metrics on the <a href="/analytics">Analytics</a> page.</p>{% endif %}
+<p class="small muted">Published via API today: {{ published_today }} / {{ max_per_day }} daily limit.</p></div>
+<div class="card"><h2>Next scheduled</h2>
+{% for q in queue %}<p><a href="/pins/{{ q.pin_id }}">Pin {{ q.pin_id }}</a> · {{ local_dt(q.scheduled_for) }} · {{ q.destination|replace('_',' ') }}</p>
+{% else %}<p class="muted">Nothing scheduled.</p>{% endfor %}
+<form method="post" action="/queue/process" class="inline">{{ csrf() }}<button class="sec" type="submit">Run publisher now</button></form>
+<form method="post" action="/pins/schedule-approved" class="inline">{{ csrf() }}<button type="submit">Schedule all approved pins</button></form></div></div>
+<h2>Recent pins</h2>
+<div class="pins">{% for p in recent %}<a class="pin" href="/pins/{{ p.id }}" style="text-decoration:none;color:inherit">
+{% if p.current_asset %}<img src="/assets/pin/{{ p.id }}" alt="">{% endif %}<div class="b"><b>{{ p.headline }}</b>{{ badge(p.status) }}</div></a>
+{% else %}<p class="muted">No pins yet. <a href="/products">Find products</a> then <a href="/create">create pins</a>.</p>{% endfor %}</div>
+{% endblock %}
