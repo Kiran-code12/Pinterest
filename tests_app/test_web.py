@@ -304,3 +304,29 @@ def test_api_validation(web):
     assert web.api_post("/api/pins/generate", {"product_id": 424242}).status_code == 404
     assert web.api_post("/api/products/discover", {"request": "x" * 1000}).status_code == 422
     assert web.c.get("/api/openapi.json").status_code == 200  # dev only; disabled in production
+
+
+def test_templates_have_no_inline_styles_or_scripts():
+    """The strict CSP (style-src/script-src 'self') silently drops inline styles: keep templates clean."""
+    from pathlib import Path
+    for f in Path("app/templates").glob("*.html"):
+        text = f.read_text()
+        assert ' style="' not in text, f"{f.name} uses an inline style (blocked by CSP)"
+        assert "<style" not in text and "onclick=" not in text, f.name
+        assert not re.search(r"<script(?![^>]*src=)", text), f.name
+
+
+def test_production_mode_hardening(tmp_path):
+    app = create_app(make_settings(tmp_path, APP_ENV="production", ADMIN_PASSWORD="a-Strong-prod-pass-9", SECRET_KEY="p" * 48))
+    c = TestClient(app, base_url="https://testserver", follow_redirects=False)  # Secure cookies need https
+    assert c.get("/api/docs").status_code == 404 and c.get("/api/openapi.json").status_code == 404
+    token = re.search(r'name="csrf_token" value="([^"]+)"', c.get("/login").text).group(1)
+    r = c.post("/login", data={"username": "admin", "password": "a-Strong-prod-pass-9", "csrf_token": token})
+    cookie = r.headers["set-cookie"].lower()
+    assert r.status_code == 303 and "httponly" in cookie and "samesite=lax" in cookie and "secure" in cookie
+
+
+def test_dev_session_cookie_flags(app):
+    w = Web(app)
+    cookie = w.login().headers["set-cookie"].lower()
+    assert "httponly" in cookie and "samesite=lax" in cookie

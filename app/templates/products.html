@@ -41,7 +41,7 @@
 <td>{% if p.local_image_path %}<img class="th" src="/assets/product/{{ p.id }}" alt="">{% endif %}</td>
 <td><a href="/products/{{ p.id }}">{{ p.title[:80] }}</a><br><span class="small muted">{{ p.brand or '' }} · {{ p.category or '' }}</span></td>
 <td>{{ p.provider.name }}{% if p.provider.is_demo %} <span class="badge demo">demo</span>{% endif %}</td>
-<td style="min-width:90px">{{ p.score|round(0)|int }}<div class="bar"><i style="width:{{ p.score }}%"></i></div></td>
+<td class="scorecell">{{ p.score|round(0)|int }} <meter min="0" max="100" value="{{ p.score|round(0)|int }}"></meter></td>
 <td>{% set l = p.primary_link %}{% if not l %}<span class="badge failed">missing</span>{% elif l.is_valid %}<span class="badge approved">ok</span>{% else %}<span class="badge failed">invalid</span>{% endif %}</td>
 <td>{{ badge(p.status) }}</td>
 <td><form method="post" action="/products/{{ p.id }}/status" class="inline">{{ csrf() }}

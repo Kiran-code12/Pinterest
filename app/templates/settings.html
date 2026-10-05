@@ -1,6 +1,6 @@
 {% extends "base.html" %}{% from "base.html" import csrf %}{% block title %}Settings{% endblock %}
 {% block body %}<h1>Settings</h1>
-<p class="muted">Credentials come from environment variables / <span class="mono">.env</span>. They are never stored in the database, never shown here and never logged. Pinterest OAuth tokens are stored encrypted.</p>
+<p class="muted">Credentials (API keys, the Pinterest client secret) come from environment variables / <span class="mono">.env</span>: they are never stored in the database, shown here or logged. The access token Pinterest issues when you press Connect is the only secret kept in the database, and it is encrypted.</p>
 <div class="card"><h2>Pinterest</h2>
 {% if conn and conn.status == 'connected' %}
 <p><span class="badge approved">● Connected</span> &nbsp; Account: <b>@{{ conn.username }}</b>{% if conn.account_type %} ({{ conn.account_type|lower }}){% endif %}{% if pin_provider.simulated %} <span class="badge demo">simulated</span>{% endif %}</p>

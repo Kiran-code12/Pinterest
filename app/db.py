@@ -29,6 +29,11 @@ class Database:
     def create_all(self) -> None:
         from . import models  # noqa: F401  (register tables)
         Base.metadata.create_all(self.engine)
+        if self.engine.url.drivername.startswith("sqlite") and self.engine.url.database not in (None, "", ":memory:"):
+            try:  # the file holds (encrypted) OAuth tokens: owner-only access
+                Path(self.engine.url.database).chmod(0o600)
+            except OSError:
+                pass
 
     def session(self):
         return self.session_factory()

@@ -38,3 +38,7 @@ button.sec,.btn.sec{background:#efe7ea;color:var(--ink)}button.danger{background
 .pager{display:flex;gap:8px;margin:12px 0}.copy{font-size:.75rem;padding:3px 8px}
 
 .banner{padding:12px 14px;border-radius:10px;margin:8px 0}.dup{border:2px solid var(--warn)}
+
+a.pin{text-decoration:none;color:inherit}.c-warn{color:var(--warn)}.c-ok{color:var(--ok)}.c-err{color:var(--err)}
+.ok-card{border-color:var(--ok)}.scorecell{min-width:110px;white-space:nowrap}
+meter{width:70px;height:10px;vertical-align:middle}meter::-webkit-meter-optimum-value,meter::-webkit-meter-suboptimum-value,meter::-webkit-meter-even-less-good-value{background:var(--accent)}

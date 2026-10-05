@@ -10,7 +10,7 @@
 {% for pr in problems %}<div class="flash error">{{ pr }}</div>{% else %}<span class="badge approved">affiliate destination verified</span>{% endfor %}
 {% if pin.product.provider.is_demo %}<p><span class="badge demo">demo product: cannot be published to a real Pinterest account</span></p>{% endif %}</div></div>
 <div>
-{% if published %}<div class="card" style="border-color:var(--ok)"><h2 style="color:var(--ok)">✓ {{ 'Published (simulated)' if published.simulated else 'Published successfully' }}</h2>
+{% if published %}<div class="card ok-card"><h2 class="c-ok">✓ {{ 'Published (simulated)' if published.simulated else 'Published successfully' }}</h2>
 {% if published.pinterest_pin_id %}<p>Pinterest Pin ID:<br><b class="mono" id="pid">{{ published.pinterest_pin_id }}</b> <button type="button" class="sec copy" data-copy="pid">Copy</button></p>{% else %}<p>Recorded as posted manually.</p>{% endif %}
 <p class="small">Board: {{ published.board_name or published.board_id or '-' }} · {{ local_dt(published.published_at) }} · via {{ published.provider }}</p>
 {% if published.pinterest_url %}<p><a class="btn" href="{{ published.pinterest_url }}" target="_blank" rel="noopener noreferrer">View Pin</a></p>{% elif published.pinterest_pin_id %}<p class="small muted">Pinterest's API did not return a link for this pin, so no "View Pin" button is shown. You can find it on your board.</p>{% endif %}

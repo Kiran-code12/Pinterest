@@ -64,7 +64,7 @@ class LocalProvider(AIProvider):
             [name.lower(), (brand or "").lower(), f"{cat_l} {name.split()[-1].lower()}" if cat and name.split() else "",
              *CATEGORY_KEYWORDS.get(cat_l, ["product ideas"])]) if w]
         desc_parts = [headline + ".", detail or f"{shown} is a {cat_l or 'product'} idea worth saving.",
-                      f"Tap through to view details on {facts.get('provider_name', 'the store')}."]
+                      "Tap through to view the details."]
         tags = " ".join("#" + re.sub(r"\W+", "", k) for k in kws[:3] if re.sub(r"\W+", "", k))
         description = (" ".join(desc_parts) + (f" {tags}" if tags else ""))[:450]
         return {"headline": headline, "supporting_text": supporting[:140], "seo_title": seo_title,

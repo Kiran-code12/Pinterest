@@ -19,7 +19,7 @@
 <form method="post" action="/queue/process" class="inline">{{ csrf() }}<button class="sec" type="submit">Run publisher now</button></form>
 <form method="post" action="/pins/schedule-approved" class="inline">{{ csrf() }}<button type="submit">Schedule all approved pins</button></form></div></div>
 <h2>Recent pins</h2>
-<div class="pins">{% for p in recent %}<a class="pin" href="/pins/{{ p.id }}" style="text-decoration:none;color:inherit">
+<div class="pins">{% for p in recent %}<a class="pin" href="/pins/{{ p.id }}">
 {% if p.current_asset %}<img src="/assets/pin/{{ p.id }}" alt="">{% endif %}<div class="b"><b>{{ p.headline }}</b>{{ badge(p.status) }}</div></a>
 {% else %}<p class="muted">No pins yet. <a href="/products">Find products</a> then <a href="/create">create pins</a>.</p>{% endfor %}</div>
 {% endblock %}

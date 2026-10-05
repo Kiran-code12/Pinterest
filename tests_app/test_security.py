@@ -61,3 +61,24 @@ def test_log_filter_redacts_secrets(caplog):
     rec = logging.LogRecord("x", logging.INFO, "", 0, "token is supersecret-value ok", None, None)
     f.filter(rec)
     assert "supersecret-value" not in rec.getMessage() and "***" in rec.getMessage()
+
+
+def test_dotenv_parsing_handles_comments_and_quotes():
+    from app.config import parse_dotenv
+    env = parse_dotenv('# c\nA=1  # trailing\nB="x # y"\nC=\nD=\'q\'\nE=http://h/#frag\nF=   # only a comment\nBAD LINE\n')
+    assert env == {"A": "1", "B": "x # y", "C": "", "D": "q", "E": "http://h/#frag", "F": ""}
+
+
+def test_shipped_env_example_yields_a_valid_dev_configuration(tmp_path):
+    """A user who copies .env.example must get sane settings (inline comments must not leak into values)."""
+    from pathlib import Path
+
+    from app.config import build_settings, parse_dotenv
+    env = parse_dotenv((Path(__file__).resolve().parent.parent / ".env.example").read_text())
+    env["DATA_DIR"] = str(tmp_path)
+    s = build_settings(env)
+    assert (s.env, s.pinterest_provider, s.ai_provider, s.max_pins_per_day) == ("dev", "real", "local", 3)
+    assert s.secret_key and "#" not in s.secret_key and len(s.secret_key) >= 32  # generated, not the comment text
+    assert s.schedule_slots == ("09:00", "14:00", "20:00") and s.amazon_marketplace == "www.amazon.in"
+    assert s.pinterest_redirect_uri == "http://localhost:8000/pinterest/callback" and not s.scheduler_enabled
+    assert s.earnkaro_link_domains == ("ekaro.in", "earnkaro.com") and s.pinterest_client_id == ""

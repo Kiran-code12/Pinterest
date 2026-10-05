@@ -1,6 +1,7 @@
 """Settings come only from environment variables (optionally loaded from a local .env file)."""
 import logging
 import os
+import re
 import secrets
 from dataclasses import dataclass, field
 from functools import lru_cache
@@ -12,16 +13,30 @@ log = logging.getLogger("engine.config")
 DEFAULT_PASSWORD = "change-me"
 
 
+def parse_dotenv(text: str) -> dict[str, str]:
+    """Parse KEY=value lines. Supports comments (# at line start or after whitespace) and quoted values."""
+    out: dict[str, str] = {}
+    for line in text.splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, raw = line.split("=", 1)
+        value = raw.strip()
+        if value[:1] in ("'", '"') and value.count(value[0]) >= 2:
+            value = value[1:value.index(value[0], 1)]
+        else:  # an unquoted '#' that starts the value or follows whitespace begins a comment
+            value = re.split(r"(?:^|\s)#", raw, maxsplit=1)[0].strip()
+        out[key.strip()] = value
+    return out
+
+
 def load_dotenv(path: Path | None = None) -> None:
     """Minimal .env loader. Real environment variables always win."""
     path = path or ROOT / ".env"
     if not path.exists():
         return
-    for line in path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if line and not line.startswith("#") and "=" in line:
-            key, value = line.split("=", 1)
-            os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+    for key, value in parse_dotenv(path.read_text(encoding="utf-8")).items():
+        os.environ.setdefault(key, value)
 
 
 def _persisted_dev_secret(data_dir: Path) -> str:

@@ -19,6 +19,6 @@
 <input type="url" name="affiliate_url" required><p><button class="sec" type="submit">Save link</button></p></form></div>
 <div class="card"><h2>Content-opportunity score: {{ p.score|round(0)|int }} / 100</h2><p class="small muted">{{ score_label }}</p>
 <table>{% for k, v in (p.score_breakdown or {}).items() %}<tr><td>{{ k|replace('_',' ') }}</td><td>{{ v }}</td></tr>{% endfor %}</table></div></div></div>
-<h2>Pins for this product</h2><div class="pins">{% for pin in pins %}<a class="pin" href="/pins/{{ pin.id }}" style="text-decoration:none;color:inherit">
+<h2>Pins for this product</h2><div class="pins">{% for pin in pins %}<a class="pin" href="/pins/{{ pin.id }}">
 {% if pin.current_asset %}<img src="/assets/pin/{{ pin.id }}" alt="">{% endif %}<div class="b"><b>{{ pin.headline }}</b>{{ badge(pin.status) }}</div></a>
 {% else %}<p class="muted">None yet.</p>{% endfor %}</div>{% endblock %}
